@@ -1,0 +1,70 @@
+# --- Gradle / Android build output ---
+.gradle/
+build/
+build-output/
+.kotlin/
+.cxx/
+.externalNativeBuild/
+captures/
+*.apk
+*.aab
+*.aar
+*.ap_
+*.dex
+local.properties
+
+# Release workflow: the calzone-server checkout it builds the core from,
+# and its APK staging dir.
+core-src/
+dist/
+
+# --- IDE / assistant tooling ---
+# Local scratch directories various editors and coding assistants create in the
+# repo root. None of them belong in the history.
+.idea/
+.vscode/
+.fleet/
+.claude/
+.cursor/
+.aider*
+.continue/
+.windsurf/
+*.iml
+*.ipr
+*.iws
+*.swp
+*~
+
+# --- Signing ---
+# The committed debug keystore is the only exception, so every debug build signs
+# identically and reinstalls never hit "signatures do not match".
+*.jks
+*.keystore
+!keystore/debug.keystore
+keystore/*.base64
+keystore.properties
+*.p12
+*.pem
+
+# --- Secrets / local config ---
+.env
+.env.*
+!.env.example
+secrets.properties
+.secrets/
+
+# --- Your own data ---
+# Calendar and contact data pulled off a phone (adb) while debugging, and
+# phone screenshots dropped in the root, hold the household's names.
+*.ics
+*.vcf
+*.db
+*.db-wal
+*.db-shm
+/Screenshot_*.png
+/Screenshot_*.jpg
+
+# --- OS noise / logs ---
+.DS_Store
+Thumbs.db
+*.log

@@ -1,0 +1,232 @@
+name: Build signed release APK
+
+# A release tag (v1.2.3; other v-tags never publish) builds a signed release
+# APK and attaches it to the GitHub release, where Obtainium picks it up.
+# The tests and lint gate it.
+# Also runnable by hand (a dispatch run may be unsigned and publishes nothing).
+#
+# Repo secrets (Settings > Secrets and variables > Actions):
+#   RELEASE_KEYSTORE_BASE64    base64 -w0 release.jks
+#   RELEASE_KEYSTORE_PASSWORD  store password
+#   RELEASE_KEY_ALIAS          key alias
+#   RELEASE_KEY_PASSWORD       key password
+#   CORE_TOKEN                 optional: a fine-grained token with read access
+#                              to calzone-server's contents, only needed while
+#                              that repo is private
+#
+# The Rust core (calzone-ffi) comes from the server repo at the tag in
+# gradle.properties `czCoreRef`, built here with cargo-ndk exactly
+# as its docker/build-android-core.sh does for `make core`.
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
+
+jobs:
+  build:
+    # No `container:`: JS actions need node, which the runner image has.
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      # Keep in lockstep with docker/Dockerfile and the server's
+      # docker/Dockerfile.android-core.
+      CMDLINE_TOOLS_VERSION: "16111833"
+      ANDROID_PLATFORM: android-37.0
+      BUILD_TOOLS_VERSION: "37.0.0"
+      GRADLE_VERSION: "9.8.0"
+      NDK_VERSION: r27d
+      CARGO_NDK_VERSION: "4.1.2"
+      CORE_DIR: core-src
+      SIGNING_ENABLED: ${{ secrets.RELEASE_KEYSTORE_BASE64 != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # A tag build without the key would publish an APK Obtainium cannot
+      # update to; fail instead.
+      - name: Signing secrets are set for tag builds
+        if: startsWith(github.ref, 'refs/tags/') && env.SIGNING_ENABLED != 'true'
+        run: |
+          echo "::error::RELEASE_KEYSTORE_BASE64 is not set; refusing to publish an unsigned release"
+          exit 1
+
+      - name: Version from tag
+        id: version
+        run: |
+          ref="${{ github.ref_name }}"
+          if [[ "$ref" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            name="${ref#v}"
+            # Monotonic and independent of run numbers: 1.2.3 -> 1002003.
+            code=$(( BASH_REMATCH[1] * 1000000 + BASH_REMATCH[2] * 1000 + BASH_REMATCH[3] ))
+          else
+            name="0.0.0-dev.${{ github.run_number }}"
+            code=1
+          fi
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "core=$(sed -n 's/^czCoreRef=//p' gradle.properties)" >> "$GITHUB_OUTPUT"
+          echo "version $name ($code), core calzone-server@$(sed -n 's/^czCoreRef=//p' gradle.properties)"
+
+      # Plain git rather than actions/checkout: the run token only reads this
+      # repo. A public server repo needs no token at all.
+      - name: Fetch the Rust core source
+        env:
+          TOKEN: ${{ secrets.CORE_TOKEN }}
+        run: |
+          set -euo pipefail
+          url="${{ github.server_url }}/${{ github.repository_owner }}/calzone-server.git"
+          auth=()
+          if [ -n "$TOKEN" ]; then
+            basic=$(printf 'x-access-token:%s' "$TOKEN" | base64 -w0)
+            echo "::add-mask::$basic"
+            auth=(-c "http.extraHeader=Authorization: Basic $basic")
+          fi
+          git "${auth[@]}" clone --depth 1 --branch "${{ steps.version.outputs.core }}" "$url" "$CORE_DIR"
+          git -C "$CORE_DIR" log --oneline -1
+
+      # Toolchains live under $HOME so the cache can restore them (the
+      # runner may not write to /opt). The runner image presets
+      # ANDROID_SDK_ROOT to its own SDK: both variables must name ours, or
+      # AGP refuses the mismatch.
+      - name: Toolchain paths
+        run: |
+          {
+            echo "ANDROID_HOME=$HOME/android-sdk"
+            echo "ANDROID_SDK_ROOT=$HOME/android-sdk"
+            echo "ANDROID_NDK_HOME=$HOME/android-ndk"
+            echo "GRADLE_DIST=$HOME/gradle-dist"
+          } >> "$GITHUB_ENV"
+
+      - name: Cache toolchains
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/android-sdk
+            ~/android-ndk
+            ~/gradle-dist
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            ~/.cargo/bin
+            ~/.cargo/registry
+            ~/.rustup
+          key: cz-android-${{ env.NDK_VERSION }}-${{ hashFiles('gradle/libs.versions.toml', 'app/build.gradle.kts', 'gradle.properties') }}
+          restore-keys: cz-android-${{ env.NDK_VERSION }}-
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Install Android SDK, NDK and Gradle
+        run: |
+          set -euo pipefail
+          if [ ! -d "$ANDROID_HOME/cmdline-tools/latest" ]; then
+            curl -fsSL "https://dl.google.com/android/repository/commandlinetools-linux-${CMDLINE_TOOLS_VERSION}_latest.zip" -o /tmp/ct.zip
+            mkdir -p "$ANDROID_HOME/cmdline-tools"
+            unzip -q /tmp/ct.zip -d "$ANDROID_HOME/cmdline-tools"
+            mv "$ANDROID_HOME/cmdline-tools/cmdline-tools" "$ANDROID_HOME/cmdline-tools/latest"
+          fi
+          # `yes` answers any license prompt. It dies of SIGPIPE when sdkmanager
+          # stops reading (exit 141), which pipefail would count as a failure:
+          # only sdkmanager's own status counts here.
+          set +o pipefail
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            "platform-tools" "platforms;${ANDROID_PLATFORM}" "build-tools;${BUILD_TOOLS_VERSION}" > /dev/null
+          set -o pipefail
+          if [ ! -d "$ANDROID_NDK_HOME" ]; then
+            curl -fsSL "https://dl.google.com/android/repository/android-ndk-${NDK_VERSION}-linux.zip" -o /tmp/ndk.zip
+            unzip -q /tmp/ndk.zip -d "$HOME"
+            mv "$HOME/android-ndk-${NDK_VERSION}" "$ANDROID_NDK_HOME"
+          fi
+          if [ ! -d "$GRADLE_DIST/gradle-${GRADLE_VERSION}" ]; then
+            curl -fsSL "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip" -o /tmp/gradle.zip
+            mkdir -p "$GRADLE_DIST"
+            unzip -q /tmp/gradle.zip -d "$GRADLE_DIST"
+          fi
+          echo "$GRADLE_DIST/gradle-${GRADLE_VERSION}/bin" >> "$GITHUB_PATH"
+
+      # The toolchain comes from the core's rust-toolchain.toml (one source of
+      # truth), installed explicitly: newer rustup does not auto-install it.
+      - name: Install Rust and cargo-ndk
+        run: |
+          set -euo pipefail
+          if ! command -v rustup >/dev/null && [ ! -x "$HOME/.cargo/bin/rustup" ]; then
+            curl -fsSL https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain none
+          fi
+          export PATH="$HOME/.cargo/bin:$PATH"
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          channel=$(sed -n 's/^channel *= *"\(.*\)"/\1/p' "$CORE_DIR/rust-toolchain.toml")
+          rustup toolchain install "$channel" --profile minimal \
+            --target aarch64-linux-android --target x86_64-linux-android
+          # No `| grep -q`: it stops reading early, and pipefail turns that into a miss.
+          [[ "$(cargo ndk --version 2>/dev/null || true)" == *"$CARGO_NDK_VERSION"* ]] \
+            || cargo install cargo-ndk --version "$CARGO_NDK_VERSION" --locked
+
+      - name: Build the Rust core
+        run: bash "$CORE_DIR/docker/build-android-core.sh"
+
+      # Gates the release: the engine tests call the real core through JNA,
+      # and the contract test parses the server's golden API files.
+      - name: Unit tests
+        run: gradle --no-daemon :app:testDebugUnitTest -PczCoreDir="$CORE_DIR/dist"
+
+      # MissingPermission and the like, which only a device would show otherwise.
+      - name: Android lint
+        run: gradle --no-daemon :app:lintDebug -PczCoreDir="$CORE_DIR/dist"
+
+      - name: Materialize release keystore
+        if: env.SIGNING_ENABLED == 'true'
+        env:
+          KS_B64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+        run: echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+
+      - name: Build release APK
+        env:
+          RELEASE_STORE_FILE: ${{ env.SIGNING_ENABLED == 'true' && format('{0}/release.jks', runner.temp) || '' }}
+          RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: |
+          gradle --no-daemon :app:assembleRelease \
+            -PczCoreDir="$CORE_DIR/dist" \
+            -PappVersionName="${{ steps.version.outputs.name }}" \
+            -PappVersionCode="${{ steps.version.outputs.code }}"
+
+      - name: Remove keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release.jks"
+
+      # The certificate digest is what Obtainium (and Android) pin updates
+      # to; printed so it can be checked against the key you generated.
+      - name: Collect and verify the APK
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          out=app/build/outputs/apk/release
+          if [ "$SIGNING_ENABLED" = "true" ]; then
+            apk="dist/calzone-${{ github.ref_name }}.apk"
+            cp "$out/app-release.apk" "$apk"
+            "$ANDROID_HOME/build-tools/${BUILD_TOOLS_VERSION}/apksigner" verify --print-certs "$apk" | grep -i "SHA-256"
+          else
+            cp "$out/app-release-unsigned.apk" "dist/calzone-${{ github.ref_name }}-unsigned.apk"
+          fi
+          ls -l dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: calzone-apk
+          path: dist/*
+
+      - name: Attach the APK to the GitHub release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          tag="${{ github.ref_name }}"
+          gh release view "$tag" > /dev/null 2>&1 \
+            || gh release create "$tag" --verify-tag --title "$tag" --generate-notes
+          gh release upload "$tag" dist/*.apk --clobber

@@ -1,0 +1,36 @@
+# Reproducible builds. Both repos are mounted side by side under /src so the
+# app finds the Rust core at ../calzone-server/dist (built by `make core`).
+name: calzone
+
+x-gradle: &gradle
+  image: calzone-build
+  build:
+    context: ..
+    dockerfile: docker/Dockerfile
+  volumes:
+    - ..:/src/calzone
+    - ../../calzone-server:/src/calzone-server:ro
+    - gradle-cache:/opt/gradle-home
+
+services:
+  build:
+    <<: *gradle
+    command: ["bash", "docker/run-gradle.sh", ":app:assembleDebug"]
+  build-release:
+    <<: *gradle
+    command: ["bash", "docker/run-gradle.sh", ":app:assembleRelease"]
+  test:
+    <<: *gradle
+    command: ["bash", "docker/run-gradle.sh", ":app:testDebugUnitTest"]
+  screenshots:
+    <<: *gradle
+    command: ["bash", "docker/run-gradle.sh", ":app:testDebugUnitTest", "--tests", "*ScreenshotTest*", "--rerun-tasks", "-PczScreenshots=/src/calzone/build-output/screenshots"]
+  lint:
+    <<: *gradle
+    command: ["bash", "docker/run-gradle.sh", ":app:lintDebug"]
+  keystore:
+    <<: *gradle
+    command: ["bash", "docker/make-keystore.sh"]
+
+volumes:
+  gradle-cache:

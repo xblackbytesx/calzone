@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">CalZone</string>
+    <string name="back">Back</string>
+    <string name="cancel">Cancel</string>
+    <!-- The name shown for a contact made without a name, phone number or email in another app. -->
+    <string name="no_name">(no name)</string>
+    <!-- The title of an event made without one in another calendar app. -->
+    <string name="untitled">(untitled)</string>
+
+    <!-- Sign-in -->
+    <string name="signin_title">Sign in</string>
+    <string name="signin_intro">On the CalZone website, open Devices and choose Show a sign-in code. Then scan it here, or open it with your camera app.</string>
+    <string name="signin_scan">Scan the code</string>
+    <string name="signin_scan_hint">Point the camera at the QR code on the Devices page.</string>
+    <string name="signin_paste">Paste the address</string>
+    <string name="signin_paste_hint">No camera? Copy the address under the code into this phone.</string>
+    <string name="signin_paste_label">Sign-in address</string>
+    <string name="signin_http_warning">This server does not use https. Use it only on your own network.</string>
+    <string name="signin_continue">Sign in</string>
+    <string name="signin_not_ours">That is not a CalZone sign-in code.</string>
+    <string name="signin_used_up">This code is used up or has expired. Show a new one on the Devices page.</string>
+    <string name="signin_offline">The server could not be reached. Check the address and that this phone is online.</string>
+    <string name="signin_other">Signing in did not work. Try a new code.</string>
+
+    <!-- Home -->
+    <string name="home_who">%1$s on %2$s</string>
+    <string name="home_device">This phone: %1$s</string>
+    <string name="network_off_title">CalZone cannot reach the network</string>
+    <string name="network_off_body">Android shows CalZone no network, so it holds every sync without saying so. If other apps are online, turn on CalZone\'s Network permission in its app settings.</string>
+    <string name="network_open_settings">Open app settings</string>
+    <string name="signed_out_title">This phone was signed out</string>
+    <string name="signed_out_body">The server no longer knows this phone (it was removed on the Devices page, or the account was disabled). Your changes on this phone are kept; sign in again to send them.</string>
+    <string name="sign_in_again">Sign in again</string>
+    <string name="access_title">Show CalZone in your other apps</string>
+    <string name="access_body">Allow access to your calendar and contacts so Fossify, widgets, Contacts, the phone app and messengers show your CalZone calendars and address books. What you change there comes back to CalZone.</string>
+    <string name="access_allow">Allow</string>
+
+    <string name="sync_running">Syncing…</string>
+    <string name="sync_last">Synced %1$s</string>
+    <string name="sync_never">Not synced yet</string>
+    <string name="sync_offline">The last try could not reach the server. It tries again when the phone is online.</string>
+    <string name="sync_failed">The last sync failed: %1$s</string>
+    <string name="sync_now">Sync now</string>
+    <plurals name="sync_pending">
+        <item quantity="one">%d change waiting to be sent</item>
+        <item quantity="other">%d changes waiting to be sent</item>
+    </plurals>
+
+    <string name="conflicts_title">Changes to look at</string>
+    <string name="conflicts_hint">When you and someone else changed the same thing, the server kept one. Nothing else was lost.</string>
+    <string name="conflict_field">%1$s: “%2$s” was kept; yours was “%3$s”.</string>
+    <string name="conflict_delete_undone">You deleted it, but someone changed it meanwhile, so it was kept.</string>
+    <string name="conflict_edit_on_deleted">Someone deleted it while you changed it, so your change is gone.</string>
+    <string name="conflict_read_only">You can only view this, so your change was undone.</string>
+    <string name="conflict_uid_taken">Something else already uses this item\'s ID, so your change was undone.</string>
+    <string name="conflict_invalid">The server could not use your change, so it was undone.</string>
+    <string name="conflict_collection_gone">The calendar or address book is gone (deleted, or no longer shared with you), and this change with it.</string>
+    <string name="conflict_dismiss">Got it</string>
+    <string name="field_title">Title</string>
+    <string name="field_time">Time</string>
+    <string name="field_place">Place</string>
+    <string name="field_notes">Notes</string>
+    <string name="field_repeat">Repeats</string>
+    <string name="field_status">Status</string>
+    <string name="field_name">Name</string>
+    <string name="field_phone">Phone</string>
+    <string name="field_email">Email</string>
+    <string name="field_address">Address</string>
+    <string name="field_birthday">Birthday</string>
+    <string name="field_organization">Work</string>
+
+    <string name="calendars_title">Calendars</string>
+    <string name="collections_hint">Switch off what this phone should not show in its calendar and contacts apps.</string>
+    <string name="books_title">Address books</string>
+    <string name="none_yet">None yet.</string>
+    <plurals name="count_events">
+        <item quantity="one">%d item</item>
+        <item quantity="other">%d items</item>
+    </plurals>
+    <plurals name="count_contacts">
+        <item quantity="one">%d contact</item>
+        <item quantity="other">%d contacts</item>
+    </plurals>
+    <string name="shared_by">shared by %1$s</string>
+    <string name="badge_view_only">view only</string>
+    <string name="badge_subscribed">subscribed</string>
+    <string name="show_on_phone">Show %1$s on this phone</string>
+
+    <string name="push_title">Instant updates</string>
+    <string name="push_name">Push</string>
+    <string name="push_on">Changes reach this phone within moments.</string>
+    <string name="push_off">Off: this phone syncs after your own edits and once a day.</string>
+    <string name="push_no_distributor">Needs a UnifiedPush app such as ntfy on this phone. Until then this phone syncs after your own edits and once a day.</string>
+    <string name="push_server_off">The server has push turned off. This phone syncs after your own edits and once a day.</string>
+
+    <string name="appearance_title">Appearance</string>
+    <string name="theme_dark">Dark</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_system">System</string>
+
+    <string name="sign_out">Sign out</string>
+    <string name="sign_out_q">Sign out of CalZone?</string>
+    <string name="sign_out_body">Your calendars and contacts leave this phone. Everything stays on the server.</string>
+    <plurals name="sign_out_pending">
+        <item quantity="one">%d change has not reached the server yet and will be lost. Your calendars and contacts leave this phone.</item>
+        <item quantity="other">%d changes have not reached the server yet and will be lost. Your calendars and contacts leave this phone.</item>
+    </plurals>
+</resources>

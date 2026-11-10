@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The web app's dark canvas and accent (calzone-server app.css). -->
+    <color name="cz_canvas">#FF131317</color>
+    <color name="cz_launcher_bg">#FF0F766E</color>
+</resources>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A household server on a LAN or VPN may be plain http; sign-in warns when
+     it is. https is never downgraded. The phone's own CAs count too (user
+     certificates), because HTTP is Android's here, not the Rust core's. -->
+<network-security-config xmlns:tools="http://schemas.android.com/tools">
+    <base-config cleartextTrafficPermitted="true" tools:ignore="InsecureBaseConfiguration,AcceptsUserCertificates">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

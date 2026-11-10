@@ -1,0 +1,90 @@
+name: CI
+
+# Every push and pull request: the JVM tests against the real Rust core.
+# Only the HOST build of the core is needed (JNA loads it in the tests), so
+# no NDK here; the release workflow builds the Android libraries. The core is
+# calzone-server at the tag in gradle.properties `czCoreRef`.
+#
+# Optional secret CORE_TOKEN: a fine-grained token with read access to
+# calzone-server's contents, only needed while that repo is private.
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  test:
+    # No `container:`: JS actions need node, which the runner image has.
+    runs-on: ubuntu-latest
+    env:
+      CMDLINE_TOOLS_VERSION: "16111833"
+      ANDROID_PLATFORM: android-37.0
+      BUILD_TOOLS_VERSION: "37.0.0"
+      GRADLE_VERSION: "9.8.0"
+      ANDROID_HOME: /opt/android-sdk
+      ANDROID_SDK_ROOT: /opt/android-sdk
+      CORE_DIR: core-src
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch the Rust core source
+        env:
+          TOKEN: ${{ secrets.CORE_TOKEN }}
+        run: |
+          set -euo pipefail
+          ref=$(sed -n 's/^czCoreRef=//p' gradle.properties)
+          url="${{ github.server_url }}/${{ github.repository_owner }}/calzone-server.git"
+          auth=()
+          if [ -n "$TOKEN" ]; then
+            basic=$(printf 'x-access-token:%s' "$TOKEN" | base64 -w0)
+            echo "::add-mask::$basic"
+            auth=(-c "http.extraHeader=Authorization: Basic $basic")
+          fi
+          # The pinned tag when it exists, else the default branch (a tag not
+          # pushed yet).
+          git "${auth[@]}" clone --depth 1 --branch "$ref" "$url" "$CORE_DIR" \
+            || git "${auth[@]}" clone --depth 1 "$url" "$CORE_DIR"
+          git -C "$CORE_DIR" log --oneline -1
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Install Android SDK and Gradle
+        run: |
+          set -euo pipefail
+          SUDO=$(command -v sudo || true)
+          $SUDO mkdir -p /opt/android-sdk /opt/gradle && $SUDO chown -R "$(id -u)" /opt/android-sdk /opt/gradle
+          curl -fsSL "https://dl.google.com/android/repository/commandlinetools-linux-${CMDLINE_TOOLS_VERSION}_latest.zip" -o /tmp/ct.zip
+          mkdir -p "$ANDROID_HOME/cmdline-tools"
+          unzip -q /tmp/ct.zip -d "$ANDROID_HOME/cmdline-tools"
+          mv "$ANDROID_HOME/cmdline-tools/cmdline-tools" "$ANDROID_HOME/cmdline-tools/latest"
+          # `yes` dies of SIGPIPE when sdkmanager stops reading; only sdkmanager's status counts.
+          set +o pipefail
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            "platform-tools" "platforms;${ANDROID_PLATFORM}" "build-tools;${BUILD_TOOLS_VERSION}" > /dev/null
+          set -o pipefail
+          curl -fsSL "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip" -o /tmp/gradle.zip
+          unzip -q /tmp/gradle.zip -d /opt/gradle
+          echo "/opt/gradle/gradle-${GRADLE_VERSION}/bin" >> "$GITHUB_PATH"
+
+      - name: Build the Rust core (host only)
+        run: |
+          set -euo pipefail
+          if ! command -v rustup >/dev/null; then
+            curl -fsSL https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain none
+          fi
+          export PATH="$HOME/.cargo/bin:$PATH"
+          channel=$(sed -n 's/^channel *= *"\(.*\)"/\1/p' "$CORE_DIR/rust-toolchain.toml")
+          rustup toolchain install "$channel" --profile minimal
+          HOST_ONLY=1 bash "$CORE_DIR/docker/build-android-core.sh"
+
+      - name: Unit tests
+        run: gradle --no-daemon :app:testDebugUnitTest -PczCoreDir="$CORE_DIR/dist"
+
+      # Catches what only a device would show otherwise, such as an API
+      # called without its manifest permission (MissingPermission).
+      - name: Android lint
+        run: gradle --no-daemon :app:lintDebug -PczCoreDir="$CORE_DIR/dist"

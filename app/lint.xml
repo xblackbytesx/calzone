@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<lint>
+    <!-- UniFFI's generated bindings use java.lang.ref.Cleaner only after
+         Class.forName finds it (API 33+) and fall back to JNA's cleaner
+         below that; lint cannot see the check. -->
+    <issue id="NewApi">
+        <ignore regexp="uniffi/calzone_ffi/wordwarz_ffi\.kt" />
+    </issue>
+    <!-- aapt2 still needs the adaptive icon under mipmap-anydpi-v26, even at
+         minSdk 35 (moving it breaks the build). -->
+    <issue id="ObsoleteSdkInt" severity="ignore" />
+    <!-- Versions move in lockstep with wordwarz, kagami and slopstream. -->
+    <issue id="GradleDependency" severity="ignore" />
+    <issue id="NewerVersionAvailable" severity="ignore" />
+    <issue id="AndroidGradlePluginVersion" severity="ignore" />
+</lint>

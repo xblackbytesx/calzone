@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="back">Terug</string>
+    <string name="cancel">Annuleren</string>
+    <string name="untitled">(zonder titel)</string>
+    <string name="no_name">(geen naam)</string>
+
+    <!-- Aanmelden -->
+    <string name="signin_title">Aanmelden</string>
+    <string name="signin_intro">Open op de CalZone-website Apparaten en kies Toon een aanmeldcode. Scan die hier, of open hem met je camera-app.</string>
+    <string name="signin_scan">Scan de code</string>
+    <string name="signin_scan_hint">Richt de camera op de QR-code op de pagina Apparaten.</string>
+    <string name="signin_paste">Plak het adres</string>
+    <string name="signin_paste_hint">Geen camera? Kopieer het adres onder de code naar deze telefoon.</string>
+    <string name="signin_paste_label">Aanmeldadres</string>
+    <string name="signin_http_warning">Deze server gebruikt geen https. Gebruik hem alleen op je eigen netwerk.</string>
+    <string name="signin_continue">Aanmelden</string>
+    <string name="signin_not_ours">Dat is geen aanmeldcode van CalZone.</string>
+    <string name="signin_used_up">Deze code is al gebruikt of verlopen. Toon een nieuwe op de pagina Apparaten.</string>
+    <string name="signin_offline">De server is niet bereikbaar. Controleer het adres en of deze telefoon online is.</string>
+    <string name="signin_other">Aanmelden lukte niet. Probeer een nieuwe code.</string>
+
+    <!-- Overzicht -->
+    <string name="home_who">%1$s op %2$s</string>
+    <string name="home_device">Deze telefoon: %1$s</string>
+    <string name="network_off_title">CalZone kan het netwerk niet bereiken</string>
+    <string name="network_off_body">Android geeft CalZone geen netwerk, dus elke synchronisatie blijft stil liggen. Zijn andere apps wel online, zet dan de Netwerk-toestemming van CalZone aan in de app-instellingen.</string>
+    <string name="network_open_settings">App-instellingen openen</string>
+    <string name="signed_out_title">Deze telefoon is afgemeld</string>
+    <string name="signed_out_body">De server kent deze telefoon niet meer (verwijderd op de pagina Apparaten, of het account is uitgezet). Je wijzigingen op deze telefoon blijven bewaard; meld opnieuw aan om ze te versturen.</string>
+    <string name="sign_in_again">Opnieuw aanmelden</string>
+    <string name="access_title">CalZone tonen in je andere apps</string>
+    <string name="access_body">Geef toegang tot je agenda en contacten, zodat Fossify, widgets, Contacten, de telefoon-app en berichtenapps je CalZone-agenda\'s en adresboeken tonen. Wat je daar verandert, komt terug in CalZone.</string>
+    <string name="access_allow">Toestaan</string>
+
+    <string name="sync_running">Bezig met synchroniseren…</string>
+    <string name="sync_last">Gesynchroniseerd %1$s</string>
+    <string name="sync_never">Nog niet gesynchroniseerd</string>
+    <string name="sync_offline">De laatste poging kon de server niet bereiken. Hij probeert het opnieuw zodra de telefoon online is.</string>
+    <string name="sync_failed">De laatste synchronisatie mislukte: %1$s</string>
+    <string name="sync_now">Nu synchroniseren</string>
+    <plurals name="sync_pending">
+        <item quantity="one">%d wijziging wacht op versturen</item>
+        <item quantity="other">%d wijzigingen wachten op versturen</item>
+    </plurals>
+
+    <string name="conflicts_title">Wijzigingen om na te kijken</string>
+    <string name="conflicts_hint">Als jij en iemand anders hetzelfde veranderden, hield de server er één. Verder ging er niets verloren.</string>
+    <string name="conflict_field">%1$s: “%2$s” is gebleven; die van jou was “%3$s”.</string>
+    <string name="conflict_delete_undone">Je verwijderde het, maar iemand anders veranderde het intussen, dus het is gebleven.</string>
+    <string name="conflict_edit_on_deleted">Iemand verwijderde het terwijl jij het veranderde, dus je wijziging is weg.</string>
+    <string name="conflict_read_only">Je kunt dit alleen bekijken, dus je wijziging is teruggedraaid.</string>
+    <string name="conflict_uid_taken">Iets anders gebruikt de ID van dit item al, dus je wijziging is teruggedraaid.</string>
+    <string name="conflict_invalid">De server kon je wijziging niet gebruiken, dus die is teruggedraaid.</string>
+    <string name="conflict_collection_gone">De agenda of het adresboek is weg (verwijderd, of niet meer met je gedeeld), en deze wijziging ook.</string>
+    <string name="conflict_dismiss">Begrepen</string>
+    <string name="field_title">Titel</string>
+    <string name="field_time">Tijd</string>
+    <string name="field_place">Plaats</string>
+    <string name="field_notes">Notities</string>
+    <string name="field_repeat">Herhaling</string>
+    <string name="field_status">Status</string>
+    <string name="field_name">Naam</string>
+    <string name="field_phone">Telefoon</string>
+    <string name="field_email">E-mail</string>
+    <string name="field_address">Adres</string>
+    <string name="field_birthday">Verjaardag</string>
+    <string name="field_organization">Werk</string>
+
+    <string name="calendars_title">Agenda\'s</string>
+    <string name="collections_hint">Zet uit wat deze telefoon niet in zijn agenda- en contacten-apps moet tonen.</string>
+    <string name="books_title">Adresboeken</string>
+    <string name="none_yet">Nog geen.</string>
+    <plurals name="count_events">
+        <item quantity="one">%d item</item>
+        <item quantity="other">%d items</item>
+    </plurals>
+    <plurals name="count_contacts">
+        <item quantity="one">%d contact</item>
+        <item quantity="other">%d contacten</item>
+    </plurals>
+    <string name="shared_by">gedeeld door %1$s</string>
+    <string name="badge_view_only">alleen bekijken</string>
+    <string name="badge_subscribed">abonnement</string>
+    <string name="show_on_phone">%1$s tonen op deze telefoon</string>
+
+    <string name="push_title">Direct bijwerken</string>
+    <string name="push_name">Push</string>
+    <string name="push_on">Wijzigingen komen binnen enkele ogenblikken op deze telefoon.</string>
+    <string name="push_off">Uit: deze telefoon synchroniseert na je eigen wijzigingen en eens per dag.</string>
+    <string name="push_no_distributor">Hiervoor is een UnifiedPush-app zoals ntfy op deze telefoon nodig. Tot die er is, synchroniseert deze telefoon na je eigen wijzigingen en eens per dag.</string>
+    <string name="push_server_off">De server heeft push uitgezet. Deze telefoon synchroniseert na je eigen wijzigingen en eens per dag.</string>
+
+    <string name="appearance_title">Weergave</string>
+    <string name="theme_dark">Donker</string>
+    <string name="theme_light">Licht</string>
+    <string name="theme_system">Systeem</string>
+
+    <string name="sign_out">Afmelden</string>
+    <string name="sign_out_q">Afmelden bij CalZone?</string>
+    <string name="sign_out_body">Je agenda\'s en contacten verdwijnen van deze telefoon. Alles blijft op de server.</string>
+    <plurals name="sign_out_pending">
+        <item quantity="one">%d wijziging staat nog niet op de server en gaat verloren. Je agenda\'s en contacten verdwijnen van deze telefoon.</item>
+        <item quantity="other">%d wijzigingen staan nog niet op de server en gaan verloren. Je agenda\'s en contacten verdwijnen van deze telefoon.</item>
+    </plurals>
+</resources>

@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copied from DAVx5 (core/src/main/res/xml/contacts.xml, GPL-3.0,
+     https://github.com/bitfireAT/davx5-ose). Without an EditSchema the
+     Contacts app treats this account as read-only and crashes when it is
+     chosen for a new contact (decision 45 in calzone-server). Trimmed to
+     what CalZone keeps (decision 18): no instant messaging, nickname,
+     website, relation, SIP address or other dates, and only the phone types
+     a vCard can say, so the Contacts app offers no field whose edit would be
+     lost. The name kind is DAVx5's as it is (the Contacts app relies on
+     it whole), so phonetic names are offered but not kept yet. -->
+<ContactsAccountType>
+
+    <EditSchema>
+        <DataKind
+            kind="name"
+            maxOccurs="1"
+            supportsDisplayName="true"
+            supportsFamilyName="true"
+            supportsMiddleName="true"
+            supportsPhoneticFamilyName="true"
+            supportsPhoneticGivenName="true"
+            supportsPhoneticMiddleName="true"
+            supportsPrefix="true"
+            supportsSuffix="true" />
+        
+        <DataKind kind="phone" >
+            <Type type="mobile" />
+            <Type type="home" />
+            <Type type="work" />
+            <Type type="fax_work" />
+            <Type type="fax_home" />
+            <Type type="pager" />
+            <Type type="other" />
+            <Type type="custom" />
+            <Type type="main" />
+            <Type type="other_fax" />
+            <Type type="work_mobile" />
+            <Type type="work_pager" />
+        </DataKind>
+        
+        <DataKind kind="email" >
+            <Type type="home" />
+            <Type type="work" />
+            <Type type="other" />
+            <Type type="mobile" />
+            <Type type="custom" />
+        </DataKind>
+        
+        <DataKind kind="photo" maxOccurs="1" />
+        
+        <DataKind kind="organization" maxOccurs="1" />
+
+        <DataKind kind="note" maxOccurs="1" />
+
+        <DataKind kind="group_membership" maxOccurs="1" />
+
+        <DataKind kind="postal" needsStructured="true" >
+            <Type type="home" />
+            <Type type="work" />
+            <Type type="other" />
+            <Type type="custom" />
+        </DataKind>
+
+        <DataKind kind="event" dateWithTime="false" >
+            <Type maxOccurs="1" type="birthday" yearOptional="true" />
+        </DataKind>
+
+    </EditSchema>
+
+</ContactsAccountType>
