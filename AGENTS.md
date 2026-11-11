@@ -211,7 +211,11 @@ Settled 2026-11-09 (phase 4 step 4):
    endpoint goes to the server with its WebPush keys; a message that did
    not decrypt, or is not a notice, is dropped; a good one starts a sync.
    Signing in again registers the endpoint for the new token. The switch
-   explains when the server has push off or the phone has no distributor.
+   explains when the server has push off or the phone has no distributor. Settings fetches
+   the account again each time it opens (2026-11-11 fix): before, the
+   push hosts were read only at sign-in and after a (un)registration, so a
+   server that turned push on later stayed "push off" on the phone, with
+   the switch that would refresh it disabled.
 9. **The settings screen is the app** until 4b: account, last sync and
    "Sync now", edits waiting, conflicts in plain words with "Got it"
    (`Explain.kt`: the field in people's terms, what stayed, what was

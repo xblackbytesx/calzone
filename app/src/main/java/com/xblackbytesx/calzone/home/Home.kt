@@ -296,6 +296,19 @@ class HomeViewModel @Inject constructor(
         device.value = Device(Network.reachable(context), push, bridges.permitted(), reminders.anyComing() && !Notices.allowed(context))
     }
 
+    /**
+     * What the server offers changes (push turned on there after this phone
+     * signed in): ask for the account again each time Settings opens. Quietly
+     * keeps the stored one when the server cannot be reached.
+     */
+    fun refreshAccount() {
+        viewModelScope.launch {
+            val s = session.current() ?: return@launch
+            val ok = withContext(Dispatchers.IO) { runCatching { core.refreshAccount(s.transport) }.isSuccess }
+            if (ok) reload()
+        }
+    }
+
     fun syncNow() = SyncWorker.now(context)
 
     fun setShown(id: String, show: Boolean) {
@@ -371,6 +384,7 @@ fun HomeScreen(onSignInAgain: () -> Unit, onBack: () -> Unit, vm: HomeViewModel 
     val askAccess = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { vm.accessAnswered() }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         vm.look()
+        vm.refreshAccount()
         vm.reload()
     }
     HomeContent(
