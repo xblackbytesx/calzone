@@ -70,6 +70,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
+import com.xblackbytesx.calzone.BuildConfig
 import com.xblackbytesx.calzone.R
 import com.xblackbytesx.calzone.account.AndroidAccounts
 import com.xblackbytesx.calzone.account.Session
@@ -179,6 +180,8 @@ data class HomeUi(
     val systemAccess: Boolean = true,
     /** Reminders are set but notifications are off, so none would show (decision 32). */
     val remindersSilenced: Boolean = false,
+    /** The app's version, at the bottom (for reports). */
+    val version: String = "",
 )
 
 interface HomeActions {
@@ -267,6 +270,7 @@ class HomeViewModel @Inject constructor(
             theme = p.theme,
             systemAccess = d.access,
             remindersSilenced = d.silenced,
+            version = BuildConfig.VERSION_NAME,
         )
     }
 
@@ -473,6 +477,15 @@ fun HomeContent(ui: HomeUi, actions: HomeActions, onBack: (() -> Unit)? = null) 
             Spacer(Modifier.height(8.dp))
             TextButton(onClick = { confirmSignOut = true }, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.sign_out), color = c.danger)
+            }
+            if (ui.version.isNotEmpty()) {
+                Text(
+                    stringResource(R.string.app_version, ui.version),
+                    color = c.quiet,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 8.dp),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                )
             }
         }
     }

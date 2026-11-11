@@ -468,6 +468,7 @@ Settled 2026-11-11 (phase 4b step 6):
 2. Step 7: the first release and the switch on both phones
    (`docs/switch-over.md`), then a few weeks of daily use.
 3. 4b: CalZone's own calendar screens (`docs/plan-phase-4b.md` in
-   calzone-server): step 7, the household test and the release, is next.
-   `czCoreRef=v0.7.0` (the core of steps 1, 5 and 6), for the owner's
-   v0.2.0 tag after the server's v0.7.0.
+   calzone-server): step 7 under way. v0.2.0 is released (core v0.7.0);
+   the household test (`docs/household-test.md` in calzone-server,
+   rewritten for the app) is the owner's to run next. Settings shows the
+   app's version at the bottom, for reports.

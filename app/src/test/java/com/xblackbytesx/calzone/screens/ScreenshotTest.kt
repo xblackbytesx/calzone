@@ -255,6 +255,7 @@ class ScreenshotTest {
                 networkOk = false,
                 systemAccess = false,
                 remindersSilenced = true,
+                version = "0.2.0",
                 status = home.status.copy(problem = Problem.SIGNED_OUT),
                 conflicts = listOf(conflict),
                 push = PushState.NO_DISTRIBUTOR,

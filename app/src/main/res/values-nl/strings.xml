@@ -177,6 +177,7 @@
     <string name="widget_month_description">Deze maand, met een stip per agenda.</string>
     <string name="widget_signed_out">Log in bij CalZone om je agenda hier te zien.</string>
     <string name="widget_failed">Open CalZone om je agenda te zien.</string>
+    <string name="app_version">CalZone %1$s</string>
     <string name="choose_view">Kies een weergave</string>
     <string name="view_agenda">Agenda</string>
     <string name="view_day">Dag</string>

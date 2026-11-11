@@ -81,8 +81,8 @@ was duplicated or lost in that time. Then uninstall DAVx5.
 
 ## Going back
 
-1. In CalZone, tap Sync now, then switch off every calendar and address
-   book on the main screen (or sign out). They leave the phone; the
+1. In CalZone, open Settings, tap Sync now, then switch off every
+   calendar and address book (or sign out). They leave the phone; the
    server keeps them.
 2. In DAVx5, tick the calendars and address books again.
 

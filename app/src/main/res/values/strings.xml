@@ -180,6 +180,7 @@
     <string name="widget_month_description">This month, with a dot per calendar.</string>
     <string name="widget_signed_out">Sign in to CalZone to see your calendar here.</string>
     <string name="widget_failed">Open CalZone to see your calendar.</string>
+    <string name="app_version">CalZone %1$s</string>
     <string name="choose_view">Choose a view</string>
     <string name="view_agenda">Agenda</string>
     <string name="view_day">Day</string>
