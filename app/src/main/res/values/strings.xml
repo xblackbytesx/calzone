@@ -106,4 +106,133 @@
         <item quantity="one">%d change has not reached the server yet and will be lost. Your calendars and contacts leave this phone.</item>
         <item quantity="other">%d changes have not reached the server yet and will be lost. Your calendars and contacts leave this phone.</item>
     </plurals>
+    <!-- The calendar (phase 4b) -->
+    <string name="settings_title">Settings</string>
+    <string name="new_event">New event</string>
+    <string name="edit_event">Edit event</string>
+    <string name="edit">Edit</string>
+    <string name="my_reminders">My reminders</string>
+    <string name="delete">Delete</string>
+    <string name="save">Save</string>
+    <string name="done">Done</string>
+    <string name="undo">Undo</string>
+    <string name="discard_q">Discard your changes?</string>
+    <string name="discard">Discard</string>
+    <string name="keep_editing">Keep editing</string>
+    <string name="starts">Starts</string>
+    <string name="ends">Ends</string>
+    <string name="repeat_none">Does not repeat</string>
+    <string name="repeat_stops">Stops</string>
+    <string name="repeat_never">Never</string>
+    <string name="repeat_on_day">On a day</string>
+    <string name="repeat_after">After a number of times</string>
+    <string name="repeat_times_label">Number of times</string>
+    <string name="reminders_hint">Only you get these.</string>
+    <string name="read_only_hint">You can see this, but not change it. Your reminders are yours.</string>
+    <string name="quick_add_hint">Quick add: dentist thu 3pm</string>
+    <string name="quick_fill">Fill in the form</string>
+    <string name="quick_none">There is no title in that.</string>
+    <string name="scope_edit">Change which ones?</string>
+    <string name="scope_delete">Delete which ones?</string>
+    <string name="scope_this">Only this one</string>
+    <string name="scope_following">This and following</string>
+    <string name="scope_all">All of them</string>
+    <string name="added">Added.</string>
+    <string name="saved">Saved.</string>
+    <string name="deleted">Deleted.</string>
+    <string name="undone">Undone.</string>
+    <string name="cannot_undo">It was changed again since, so it can\'t be undone.</string>
+    <string name="write_failed">That did not work:</string>
+    <string name="need_title">Give it a title.</string>
+    <string name="calendar_prefs_title">Your view of this calendar</string>
+    <string name="calendar_prefs_hint">Only you see these, on the web and on your phones.</string>
+    <string name="calendar_color">Color</string>
+    <string name="calendar_color_own">The calendar\'s own color</string>
+    <string name="calendar_default_reminder">Reminder for new events</string>
+    <string name="reminder_none">None</string>
+    <string name="calendar_hide_everywhere">Hide everywhere</string>
+    <string name="calendar_hide_hint">On the web and your other phones too. This phone\'s own switch is in the list.</string>
+    <string name="reminders_channel">Reminders</string>
+    <string name="reminders_channel_hint">Your reminders for events in CalZone.</string>
+    <string name="reminder_public">A reminder</string>
+    <string name="reminder_locked_title">A reminder at %1$s</string>
+    <string name="reminder_locked_body">Unlock your phone to see it.</string>
+    <string name="snooze">Snooze</string>
+    <string name="open">Open</string>
+    <string name="reminders_off_title">Reminders can\'t show</string>
+    <string name="reminders_off_body">You have reminders set, but notifications for CalZone are off.</string>
+    <string name="reminders_off_allow">Allow notifications</string>
+    <string name="all_day_on">%1$s, all day</string>
+    <string name="view_month_day">Month and days</string>
+    <string name="month_nothing">Nothing planned this month.</string>
+    <string name="search">Search</string>
+    <string name="search_hint">Search titles, places and notes</string>
+    <string name="search_clear">Clear</string>
+    <string name="search_what">Type a word from an event\'s title, place or notes.</string>
+    <string name="search_running">Searching…</string>
+    <string name="search_none">Nothing found.</string>
+    <string name="not_ours">That event is not in CalZone, or calendar access is off.</string>
+    <string name="no_writable_calendar">There is no calendar here you can add to.</string>
+    <string name="until_time">Until %1$s</string>
+    <string name="widget_agenda">CalZone agenda</string>
+    <string name="widget_agenda_description">The next two weeks.</string>
+    <string name="widget_month">CalZone month</string>
+    <string name="widget_month_description">This month, with a dot per calendar.</string>
+    <string name="widget_signed_out">Sign in to CalZone to see your calendar here.</string>
+    <string name="widget_failed">Open CalZone to see your calendar.</string>
+    <string name="choose_view">Choose a view</string>
+    <string name="view_agenda">Agenda</string>
+    <string name="view_day">Day</string>
+    <string name="view_week">Week</string>
+    <string name="view_month">Month</string>
+    <string name="pick_date">Go to a date</string>
+    <string name="go">Go</string>
+    <string name="go_today">Go to today</string>
+    <string name="agenda_today">Today</string>
+    <string name="agenda_tomorrow">Tomorrow</string>
+    <string name="agenda_yesterday">Yesterday</string>
+    <string name="agenda_nothing">Nothing planned</string>
+    <string name="agenda_loading">Loading your calendars…</string>
+    <string name="agenda_empty">No calendars on this phone yet. They appear after the first sync, or switch them on in Settings.</string>
+    <string name="agenda_attention">Something needs your attention in Settings.</string>
+    <string name="all_day">All day</string>
+    <string name="until_label">Until</string>
+    <plurals name="agenda_conflicts">
+        <item quantity="one">%d change to look at</item>
+        <item quantity="other">%d changes to look at</item>
+    </plurals>
+    <string name="event_pending">Waiting to be sent to the server</string>
+    <string name="event_gone">This event is no longer here.</string>
+    <string name="field_calendar">Calendar</string>
+    <string name="reminders_title">Your reminders</string>
+    <!-- "Wednesday 7 January to Friday 9 January" -->
+    <string name="range">%1$s to %2$s</string>
+    <!-- "Wednesday 7 January, 16:00 to 17:00" -->
+    <string name="day_with_times">%1$s, %2$s to %3$s</string>
+    <!-- "Wednesday 7 January, 16:00" -->
+    <string name="day_with_time">%1$s, %2$s</string>
+    <string name="repeat_daily">Every day</string>
+    <string name="repeat_weekly">Every week</string>
+    <string name="repeat_monthly">Every month</string>
+    <string name="repeat_yearly">Every year</string>
+    <string name="repeat_custom">Repeats (as set elsewhere)</string>
+    <!-- "Every week, until 1 July" -->
+    <string name="repeat_until">%1$s, until %2$s</string>
+    <plurals name="repeat_times">
+        <item quantity="one">%1$s, %2$d time</item>
+        <item quantity="other">%1$s, %2$d times</item>
+    </plurals>
+    <string name="reminder_at_start">At the start</string>
+    <plurals name="reminder_minutes">
+        <item quantity="one">%d minute before</item>
+        <item quantity="other">%d minutes before</item>
+    </plurals>
+    <plurals name="reminder_hours">
+        <item quantity="one">%d hour before</item>
+        <item quantity="other">%d hours before</item>
+    </plurals>
+    <plurals name="reminder_days">
+        <item quantity="one">%d day before</item>
+        <item quantity="other">%d days before</item>
+    </plurals>
 </resources>

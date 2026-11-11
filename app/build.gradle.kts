@@ -178,6 +178,8 @@ dependencies {
 
     implementation(libs.datastore.preferences)
     implementation(libs.androidx.work.runtime.ktx)
+    // The home screen widgets (phase 4b step 6).
+    implementation(libs.androidx.glance.appwidget)
 
     implementation(libs.okhttp)
     implementation(libs.camera.camera2)

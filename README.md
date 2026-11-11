@@ -10,8 +10,8 @@ was kept.
 Your calendars show in the phone's own calendar apps (Fossify, widgets),
 and your address books in its Contacts app, phone app and messengers,
 replacing DAVx5. What you change there comes back to CalZone, merged field
-by field, with custom labels, groups and photos kept. Coming next:
-CalZone's own calendar screens.
+by field, with custom labels, groups and photos kept. CalZone's own
+calendar is growing in the app: month and days, agenda, day, week and month, editing, reminders, search and widgets.
 
 - No Google Play Services, no tracking: it talks only to your server and,
   if you want instant updates, to your UnifiedPush distributor (ntfy).

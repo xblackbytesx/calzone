@@ -1,6 +1,7 @@
 package com.xblackbytesx.calzone.prefs
 
 import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
@@ -19,6 +20,12 @@ data class Prefs(
     val shown: Set<String> = emptySet(),
     /** Collections this phone does not show. */
     val hidden: Set<String> = emptySet(),
+    /** The calendar view chosen last (`AGENDA`, `DAY`, `WEEK` or `MONTH`), opened on a fresh start. */
+    val view: String? = null,
+    /** The calendar a new event went in last, offered first next time. */
+    val lastCalendar: String? = null,
+    /** The notification permission was asked once (with the first reminder, decision 32). */
+    val askedNotifications: Boolean = false,
 ) {
     /**
      * Whether this phone shows a collection in Android's calendar and
@@ -37,17 +44,35 @@ class PrefsStore(private val context: Context) {
     private val themeKey = stringPreferencesKey("theme")
     private val shownKey = stringSetPreferencesKey("shown")
     private val hiddenKey = stringSetPreferencesKey("hidden")
+    private val viewKey = stringPreferencesKey("view")
+    private val lastCalendarKey = stringPreferencesKey("last_calendar")
+    private val askedNotificationsKey = booleanPreferencesKey("asked_notifications")
 
     val prefs: Flow<Prefs> = context.prefsStore.data.map { p ->
         Prefs(
             theme = p[themeKey]?.let { runCatching { Theme.valueOf(it) }.getOrNull() } ?: Theme.DARK,
             shown = p[shownKey] ?: emptySet(),
             hidden = p[hiddenKey] ?: emptySet(),
+            view = p[viewKey],
+            lastCalendar = p[lastCalendarKey],
+            askedNotifications = p[askedNotificationsKey] ?: false,
         )
     }
 
     suspend fun setTheme(t: Theme) {
         context.prefsStore.edit { it[themeKey] = t.name }
+    }
+
+    suspend fun setView(view: String) {
+        context.prefsStore.edit { it[viewKey] = view }
+    }
+
+    suspend fun setAskedNotifications() {
+        context.prefsStore.edit { it[askedNotificationsKey] = true }
+    }
+
+    suspend fun setLastCalendar(id: String) {
+        context.prefsStore.edit { it[lastCalendarKey] = id }
     }
 
     suspend fun setShown(id: String, show: Boolean) {

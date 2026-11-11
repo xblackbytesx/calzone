@@ -51,6 +51,45 @@ the switch-over guide (`docs/switch-over.md`). The R8 release build was
 checked to build in the sandbox; a release APK has not run on a phone.
 The switch on both phones is the owner's.
 
+2026-11-11: phase 4b step 2 built: the calendar is the main screen
+(decisions 23 to 26). An agenda of days with their events, from the
+core's occurrences (decision 52 in calzone-server), today and a
+read-only event sheet; settings behind a button. 28 JVM tests, lint
+clean, screenshots of the agenda and the sheet in both languages.
+**Device-untested**, also the scrolling and the speed of the first load on
+a phone.
+
+2026-11-11: phase 4b step 3 built: day, week and month views (decisions
+27 to 29). 41 JVM tests (the grid's layout in `GridTest`), lint clean,
+screenshots of each view, Dutch with a Monday week. **Device-untested**:
+swiping, the date picker, rotation and the system ending the app.
+
+2026-11-11: phase 4b step 4 built: editing (decisions 30 and 31). New
+events from "+" or a long press, quick add, edit, delete, the scope
+question, Undo, and each calendar's own name, color, default reminder and
+"hide everywhere" in Settings. 51 JVM tests (`DraftTest` checks what the
+editor sends), lint clean, screenshots of the editor and the calendar
+sheet. **Device-untested**: every write, the pickers, the keyboard over the
+form, and the bridge mirroring a write into Android.
+
+2026-11-11: phase 4b step 6 built: search, other apps and widgets
+(decisions 34 and 35). 66 JVM tests (`RequestsTest`, `WidgetAgendaTest`),
+lint clean (zero findings), a search screenshot. **Device-untested**:
+"add to calendar" from a real app, opening an event from another app or
+the system, both widgets on a home screen (Glance has no screenshot test
+here), the midnight refresh.
+
+2026-11-11: month and days as the default view, and the calendar legend
+(decision 33, the owner's request before step 6). 60 JVM tests, lint
+clean, screenshots in both languages. **Device-untested.**
+
+2026-11-11: phase 4b step 5 built: CalZone rings its own reminders
+(decision 32). 57 JVM tests (`TimingTest`, `NoticeTextTest`); lint had six
+warnings missed at hand-over (fixed in step 6);
+the core's side is tested in calzone-server. **Device-untested**: every
+alarm, the notifications and their buttons, the reboot before and after
+unlock, a time zone change, hours of Doze, the permission question.
+
 ## Build and verify
 
 Docker only (`make`); both repos must be checked out side by side.
@@ -107,7 +146,15 @@ kotlinx.serialization, Compose Material 3, WorkManager, JNA for UniFFI.
 | `push/Push.kt` | UnifiedPush: endpoint and keys to the server, decrypted notices start a sync |
 | `prefs/` | Theme and which collections this phone shows; `Network` (reachable, the app's settings page) |
 | `signin/SignIn.kt`, `qr/Qr.kt` | Sign-in (scan, paste), CameraX + ZXing scanner |
-| `home/Home.kt`, `home/Explain.kt` | The settings screen (stateless `HomeContent`), conflicts in plain words (pure, tested) |
+| `calendar/CalendarScreen.kt` | The main screen (stateless `CalendarContent`): top bar, view menu, date picker, the agenda, the day's list, the event sheet, `CalendarViewModel` |
+| `calendar/Draft.kt`, `calendar/Editor.kt` | The editor's form and what it sends (`changeBody`, pure, tested), the editor screen, the scope question |
+| `reminders/Timing.kt`, `reminders/Reminders.kt`, `reminders/Receivers.kt` | When reminders ring (pure, tested); the one alarm, the notifications, the kept times; the alarm and boot receivers |
+| `calendar/Requests.kt`, `calendar/Search.kt`, `bridge/SystemEvents.kt` | Intents as requests (pure, tested), "add to calendar" drafts; the search screen; Android rows mapped back to CalZone's events |
+| `widget/WidgetData.kt`, `widget/Widgets.kt` | The widgets' data (`widgetAgenda`, pure, tested), refresh and midnight alarm; the Glance agenda and month widgets |
+| `home/CalendarPrefs.kt` | My own view of a calendar: name, color, default reminder, hidden everywhere |
+| `calendar/Grid.kt`, `calendar/Views.kt` | Day, week and month: pages, overlap columns and bar lanes (pure, tested), and the pagers that draw them |
+| `calendar/Agenda.kt`, `calendar/Format.kt` | Occurrences into days (`agendaDays`, pure, tested); dates, times, repeats and reminders in the phone's words |
+| `home/Home.kt`, `home/Explain.kt` | The settings screen (stateless `HomeContent`, behind the calendar's button), conflicts in plain words (pure, tested) |
 | `ui/Theme.kt` | The web app's color roles, dark and light |
 
 ## Decisions
@@ -255,6 +302,152 @@ Settled 2026-11-09 (phase 4 step 7):
     release build (application id without `.debug`) has its own account,
     so a debug build next to it shows everything twice.
 
+Settled 2026-11-11 (phase 4b step 2):
+
+23. **The calendar is the app.** Signed in, the app opens on the agenda;
+    the settings screen of steps 4 to 7 sits behind its gear button (back
+    returns). Anything there that needs the person (signed out, no
+    network, no calendar and contacts access) shows as a red dot on the
+    button and a one-line notice above the days.
+24. **The agenda** lists every day that has something, and today always
+    ("Nothing planned"). Within a day: all-day first, then by start time,
+    then title. An event longer than a day shows on each day it covers
+    (from its start time, all day, until its end time); one that ends at
+    midnight belongs to the day before. Days gone by are dimmed. It opens
+    on today and loads 90 more days when either end comes in sight; the
+    month of the top day is the title. Pull down to sync. Times follow
+    the phone's 12- or 24-hour setting and its language.
+25. **Conflicts in place.** Calendar conflicts are a one-line notice
+    above the days that opens them all; the event sheet shows those about
+    its event, each with "Got it". Contacts' conflicts stay in Settings.
+26. **The event sheet** is read-only until step 4: title, when, how it
+    repeats and until when, place, notes, the person's own reminders, the
+    calendar and whose it is, and "waiting to be sent" for an edit not on
+    the server yet. Shared calendars show the owner's initials in the
+    calendar's color, as on the web. The core's expansion cache is warmed
+    by the first load after start; the agenda shows "Loading" until then.
+
+Settled 2026-11-11 (phase 4b step 3):
+
+27. **Four views, one date in sight.** Agenda (the default until decision
+    33 made month and days the default), day, week and month, chosen from a menu in the top bar; the title (the month,
+    for a week the month of its middle day) opens a date picker. Today,
+    the picker and a change of view all go to one date, the agenda's top
+    day or the page shown. The view model keeps the view and that date in
+    its saved state, so both survive rotation and the system ending the
+    app; a fresh start opens on today, in the view chosen last (`Prefs.view`,
+    this phone only). The day changing while away goes back to today.
+    Weeks start on the phone's own first day (`WeekFields` of its locale).
+28. **Day and week are hours with an all-day row.** One `HorizontalPager`
+    per view, pages numbered from 1970 so a date always has the same page;
+    one vertical scroll shared by every page, opening 90 minutes before
+    now on today, else at 7:00. Events that overlap, directly or through
+    others, share the width, each in the first free column; a short event
+    takes at least 30 minutes of room. All-day events and timed ones of 24
+    hours or more are bars in the all-day row (three lanes, then "+n");
+    shorter ones past midnight split over both days. A red line marks now
+    and moves each minute. Blocks are the calendar's color with black or
+    white text, as on the web; the day view adds the time, place and the
+    owner's initials. A week's day heading opens that day.
+29. **The month** shows the weeks the month touches; bars for all-day and
+    long events, a dot and title for timed ones on the day they start, as
+    many lanes as fit, then per day the one left or "+n". Tapping a day
+    opens its list in a sheet (with "Day" to open it in the day view);
+    an event there opens the event sheet. The grids load around the date
+    in sight (75 days back, 105 ahead) and reload only when a page leaves
+    that; the agenda keeps loading 90 days more at either end. No drag to
+    move or long press to add yet (step 4, and drag is out of scope).
+
+Settled 2026-11-11 (phase 4b step 4):
+
+30. **Editing works as on the web** (decision 37 in calzone-server). The
+    editor is a full-screen form: quick add (new events; fills the form
+    through the core's parser, in the phone's language), title, calendar
+    (new events only, the one used last first; events do not move between
+    calendars, as on the web), all day, start and end (the end keeps the
+    length when the start moves), repeat with "stops never, on a day,
+    after n times" ("as set elsewhere" kept unless changed), place,
+    notes, and my reminders as chips (several allowed; a new event starts
+    with the calendar's default). Only what changed is sent (`changeBody`,
+    the web's rule); a recurring event asks "only this one, this and
+    following, all of them", except when only my reminders changed. On a
+    view-only calendar, Edit becomes "My reminders". New events come from
+    "+" or a long press on an hour (the half hour) or a month day. Delete
+    has no "are you sure": every write shows Undo for 10 seconds, kept by
+    the core in memory (gone if the app is ended), and starts a sync, which
+    also lets the bridge mirror it into Android. Closing the editor with
+    changes asks before throwing them away (typed work only).
+31. **My layer per calendar from Settings.** Tapping a calendar opens my
+    name for it, my color (the web's palette, or the calendar's own),
+    the reminder new events get, and "hide everywhere" (the web and my
+    other phones; this phone's own switch stays in the list). Saved
+    through the core at once and sent with the next sync.
+
+Settled 2026-11-11 (phase 4b step 5):
+
+32. **CalZone rings its own reminders** (decision 51 in calzone-server).
+    The core finds them (`Core.reminders`: each occurrence with its own
+    part's reminders, in the calendars this phone shows). One exact alarm
+    (`setExactAndAllowWhileIdle`) for the next due moment; when it rings,
+    everything due since the last ring is shown (at most a day back, and
+    only while the event lasts or within an hour of its time), then the
+    next is set. Set again after every sync run (offline too), every edit
+    and undo in the app, and on boot, unlock, update, clock and zone
+    changes; a clock set back starts again from now, a fresh install does
+    not ring the past. Device-protected storage holds only the last ring
+    and the next 64 times; before the first unlock a ring says "a reminder
+    at 09:00, unlock to see it", replaced by the real ones at unlock.
+    One notification per occurrence (high importance, category reminder,
+    private on the lock screen, the calendar's color) with Snooze (10
+    minutes, kept with its content in credential storage) and Open (the
+    event's sheet). The notification permission is asked once, when a
+    reminder is first set; refused, Settings shows a notice and the gear
+    its red dot. Signing out cancels the alarm, the times and the
+    notifications. A reminder more than 35 days before its event is not
+    found.
+
+Settled 2026-11-11 (between steps 5 and 6, the owner's request):
+
+33. **Month and days is the default view, with a legend**, as Fossify
+    has it (`reference-screenshots/`). A small month (always six weeks, so
+    the list never jumps) with a dot per calendar on each day (at most
+    three, all-day events first) over the list of that month's days in
+    the agenda's rows. Swipe the month to page; tap a day to select it
+    (ringed) and bring it to the top of the list; long press a day for a
+    new event. A fresh start without a chosen view opens it. Along the
+    bottom of every view, the calendars this phone shows, each name over
+    a bar in its color; it scrolls sideways when there are many. Display
+    only: which calendars show is still chosen in Settings.
+
+Settled 2026-11-11 (phase 4b step 6):
+
+34. **Other apps and search.** The app answers what calendar apps answer
+    (AOSP Calendar's filters): `INSERT` of an event opens the editor
+    filled in (title, place, notes, begin and end, all day in UTC days;
+    in the calendar used last, its default reminder; repeat rules sent
+    along are not taken); `VIEW` or `EDIT` of
+    `content://com.android.calendar/events/<id>` finds CalZone's event by
+    the bridge's keys (the calendar's `_SYNC_ID`, the row's `_SYNC_ID` or
+    `ORIGINAL_SYNC_ID`) and the occurrence by the begin time sent (or the
+    row's original instance), then shows its sheet or its editor; a row
+    that is not CalZone's, or no calendar access, says so. `VIEW` of a
+    `time/<ms>` goes to that day. Notifications and widgets use the same
+    path (`requestOf` into `CalendarRequests`), and any of them closes
+    Settings. Search (the top bar's magnifier) runs in the core over the
+    calendars this phone shows: every word in the title, place or notes,
+    one occurrence per event (the next one, else the latest), coming
+    first; typing waits 250 ms. The title drops the year in the current
+    year, so four buttons fit.
+35. **Two widgets, drawn with Glance** (1.2.0): the agenda (today and
+    the next 13 days, today's ended events left out, "+" for a new event)
+    and the month (six weeks with a dot per calendar, today in the
+    accent). They follow the phone's dark or light setting in the app's
+    colors, show only calendars this phone shows, and open the app on the
+    event or day tapped. No periodic update: refreshed after every sync
+    run and every edit in the app, on boot, clock and zone changes, and
+    by an inexact alarm just after midnight. Signed out or failing, they
+    say so and open the app.
+
 ## Invariants
 
 - `uniffi.calzone_ffi` is imported only by `core/Core.kt` (and tests).
@@ -274,4 +467,7 @@ Settled 2026-11-09 (phase 4 step 7):
    contacts bridge (step 6).
 2. Step 7: the first release and the switch on both phones
    (`docs/switch-over.md`), then a few weeks of daily use.
-3. 4b: CalZone's own calendar screens.
+3. 4b: CalZone's own calendar screens (`docs/plan-phase-4b.md` in
+   calzone-server): step 7, the household test and the release, is next.
+   The app needs a core newer than `czCoreRef=v0.6.0` (steps 1, 5 and 6):
+   bump it to the server tag that carries them.

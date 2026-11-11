@@ -26,6 +26,12 @@
     <uses-permission android:name="android.permission.READ_SYNC_SETTINGS" />
     <uses-permission android:name="android.permission.WRITE_SYNC_SETTINGS" />
     <uses-permission android:name="android.permission.READ_SYNC_STATS" />
+    <!-- CalZone's own reminders (decision 32): one exact alarm at a time
+         (granted to calendar apps without asking), notifications (asked with
+         the first reminder), and setting the alarm again after a reboot. -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:name=".CalZoneApp"
@@ -60,7 +66,56 @@
                 <data android:pathPattern="/link/czl_.*" />
                 <data android:pathPattern="/.*/link/czl_.*" />
             </intent-filter>
+            <!-- What calendar apps answer (AOSP Calendar's filters, decision 34):
+                 "add to calendar", and opening or editing an event or a time
+                 of Android's calendar (the bridge's rows map back to ours). -->
+            <intent-filter>
+                <action android:name="android.intent.action.INSERT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="vnd.android.cursor.dir/event" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <action android:name="android.intent.action.EDIT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="vnd.android.cursor.item/event" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="time/epoch" />
+                <data android:host="com.android.calendar" />
+                <data android:scheme="content" />
+            </intent-filter>
         </activity>
+
+        <!-- The home screen widgets (decision 35). -->
+        <receiver
+            android:name=".widget.AgendaWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_agenda">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_agenda_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.MonthWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_month">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_month_info" />
+        </receiver>
+        <!-- Just after midnight: the widgets' today moves on. -->
+        <receiver
+            android:name=".widget.WidgetRefreshReceiver"
+            android:exported="false" />
 
         <!-- The account exists so the sync adapters have something to hang on. -->
         <!-- Exported without a permission, like DAVx5's: Android's account and
@@ -106,6 +161,28 @@
                 android:name="android.provider.CONTACTS_STRUCTURE"
                 android:resource="@xml/contacts" />
         </service>
+
+        <!-- The alarm and the notification's Snooze. Direct-boot aware: a
+             reminder can ring before the first unlock (decision 51). -->
+        <receiver
+            android:name=".reminders.ReminderReceiver"
+            android:directBootAware="true"
+            android:exported="false" />
+
+        <!-- System broadcasts only (they are protected): the alarm again after
+             a reboot, an update, or a clock or zone change. -->
+        <receiver
+            android:name=".reminders.BootReceiver"
+            android:directBootAware="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+            </intent-filter>
+        </receiver>
 
         <!-- UnifiedPush events from the distributor (ntfy). Not exported: the
              connector's own receiver forwards to it. -->

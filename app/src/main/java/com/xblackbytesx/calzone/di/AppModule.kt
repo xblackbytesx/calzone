@@ -8,6 +8,7 @@ import com.xblackbytesx.calzone.bridge.CalendarBridge
 import com.xblackbytesx.calzone.bridge.ContactsBridge
 import com.xblackbytesx.calzone.core.Core
 import com.xblackbytesx.calzone.prefs.PrefsStore
+import com.xblackbytesx.calzone.reminders.Reminders
 import com.xblackbytesx.calzone.sync.SyncRunner
 import dagger.Module
 import dagger.Provides
@@ -36,8 +37,12 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun runner(@ApplicationContext context: Context, core: Core, session: Session, bridges: Bridges, prefs: PrefsStore): SyncRunner =
-        SyncRunner(context, core, session, bridges, prefs)
+    fun runner(@ApplicationContext context: Context, core: Core, session: Session, bridges: Bridges, prefs: PrefsStore, reminders: Reminders): SyncRunner =
+        SyncRunner(context, core, session, bridges, prefs, reminders)
+
+    @Provides
+    @Singleton
+    fun reminders(@ApplicationContext context: Context, core: Core, prefs: PrefsStore): Reminders = Reminders(context, core, prefs)
 
     @Provides
     @Singleton

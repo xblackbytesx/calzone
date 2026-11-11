@@ -4,7 +4,10 @@ import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import android.content.Context
+import android.content.Intent
+import android.provider.Settings
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,28 +24,34 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.rounded.ErrorOutline
+import androidx.compose.material.icons.rounded.NotificationsOff
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -68,16 +77,20 @@ import com.xblackbytesx.calzone.bridge.Bridges
 import com.xblackbytesx.calzone.core.Core
 import com.xblackbytesx.calzone.model.Account
 import com.xblackbytesx.calzone.model.ConflictDetail
+import com.xblackbytesx.calzone.model.Mine
 import com.xblackbytesx.calzone.prefs.Network
 import com.xblackbytesx.calzone.prefs.Prefs
 import com.xblackbytesx.calzone.prefs.PrefsStore
 import com.xblackbytesx.calzone.prefs.Theme
 import com.xblackbytesx.calzone.push.Push
+import com.xblackbytesx.calzone.reminders.Notices
+import com.xblackbytesx.calzone.reminders.Reminders
 import com.xblackbytesx.calzone.sync.Problem
 import com.xblackbytesx.calzone.sync.SyncRunner
 import com.xblackbytesx.calzone.sync.SyncStatus
 import com.xblackbytesx.calzone.sync.SyncWorker
 import com.xblackbytesx.calzone.ui.Cz
+import com.xblackbytesx.calzone.ui.czSwitchColors
 import com.xblackbytesx.calzone.ui.parseColor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -117,6 +130,10 @@ data class CollectionRow(
     val subscribed: Boolean,
     val count: Int,
     val shown: Boolean,
+    /** The shared name and color, under my own (decision 31). */
+    val baseName: String = label,
+    val baseColor: String? = color,
+    val mine: Mine = Mine(),
 )
 
 data class ConflictRow(
@@ -126,7 +143,26 @@ data class ConflictRow(
     val collection: String,
     val at: Long,
     val lines: List<Explanation>,
+    /** Which object it is about, so the event sheet can show it in place. */
+    val collectionId: String = "",
+    val name: String = "",
 )
+
+/** Every conflict to tell the person about, newest first, in plain words. */
+fun conflictRows(core: Core, collections: List<com.xblackbytesx.calzone.model.StoredCollection>): List<ConflictRow> {
+    val labels = collections.associate { it.info.id to it.info.label }
+    val metas = mutableMapOf<String, List<com.xblackbytesx.calzone.model.ObjectMeta>>()
+    return core.conflicts().map { c ->
+        val body = when (val d = c.detail) {
+            is ConflictDetail.Rejected -> d.body
+            is ConflictDetail.CollectionGone -> d.body
+            is ConflictDetail.Merged -> null
+        }
+        val inStore = metas.getOrPut(c.collection) { runCatching { core.objects(c.collection) }.getOrDefault(emptyList()) }
+        val title = inStore.firstOrNull { it.name == c.name }?.summary ?: titleIn(body) ?: c.name
+        ConflictRow(c.id, title, labels[c.collection] ?: "", c.at, explain(c.detail), c.collection, c.name)
+    }.reversed()
+}
 
 data class HomeUi(
     val account: Account? = null,
@@ -141,22 +177,26 @@ data class HomeUi(
     val theme: Theme = Theme.DARK,
     /** The bridges may write Android's calendar and contacts (decisions 13 and 17). */
     val systemAccess: Boolean = true,
+    /** Reminders are set but notifications are off, so none would show (decision 32). */
+    val remindersSilenced: Boolean = false,
 )
 
 interface HomeActions {
     fun syncNow()
     fun setShown(id: String, show: Boolean)
+    fun setMine(id: String, mine: Mine)
     fun dismiss(id: Long)
     fun setPush(on: Boolean)
     fun setTheme(t: Theme)
     fun openNetworkSettings()
+    fun openNotificationSettings()
     fun allowAccess()
     fun signInAgain()
     fun signOut()
 }
 
 /** The phone's own state, read on every resume. */
-private data class Device(val networkOk: Boolean = true, val push: PushState = PushState.OFF, val access: Boolean = true)
+private data class Device(val networkOk: Boolean = true, val push: PushState = PushState.OFF, val access: Boolean = true, val silenced: Boolean = false)
 
 /** What the store holds, read in one go on the IO thread. */
 private data class Loaded(
@@ -175,6 +215,7 @@ class HomeViewModel @Inject constructor(
     private val runner: SyncRunner,
     private val prefsStore: PrefsStore,
     private val bridges: Bridges,
+    private val reminders: Reminders,
 ) : ViewModel() {
     private val loaded = MutableStateFlow<Loaded?>(null)
     private val device = MutableStateFlow(Device())
@@ -203,6 +244,9 @@ class HomeViewModel @Inject constructor(
                 subscribed = c.subscribed,
                 count = l?.counts?.get(c.id) ?: 0,
                 shown = p.shows(c.id, c.mine.hidden),
+                baseName = c.name,
+                baseColor = c.color,
+                mine = c.mine,
             )
         }
         val cols = l?.collections.orEmpty()
@@ -222,6 +266,7 @@ class HomeViewModel @Inject constructor(
             push = push,
             theme = p.theme,
             systemAccess = d.access,
+            remindersSilenced = d.silenced,
         )
     }
 
@@ -230,18 +275,8 @@ class HomeViewModel @Inject constructor(
             loaded.value = withContext(Dispatchers.IO) {
                 runCatching {
                     val collections = core.collections()
-                    val metas = collections.associate { it.info.id to core.objects(it.info.id) }
-                    val labels = collections.associate { it.info.id to it.info.label }
-                    val conflicts = core.conflicts().map { c ->
-                        val body = when (val d = c.detail) {
-                            is ConflictDetail.Rejected -> d.body
-                            is ConflictDetail.CollectionGone -> d.body
-                            is ConflictDetail.Merged -> null
-                        }
-                        val title = metas[c.collection]?.firstOrNull { it.name == c.name }?.summary ?: titleIn(body) ?: c.name
-                        ConflictRow(c.id, title, labels[c.collection] ?: "", c.at, explain(c.detail))
-                    }
-                    Loaded(core.account(), core.server(), collections, metas.mapValues { it.value.size }, conflicts.reversed())
+                    val counts = collections.associate { it.info.id to core.objects(it.info.id).size }
+                    Loaded(core.account(), core.server(), collections, counts, conflictRows(core, collections))
                 }.getOrNull()
             }
         }
@@ -254,7 +289,7 @@ class HomeViewModel @Inject constructor(
             Push.enabled(context) -> PushState.ON
             else -> PushState.OFF
         }
-        device.value = Device(Network.reachable(context), push, bridges.permitted())
+        device.value = Device(Network.reachable(context), push, bridges.permitted(), reminders.anyComing() && !Notices.allowed(context))
     }
 
     fun syncNow() = SyncWorker.now(context)
@@ -263,6 +298,14 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             prefsStore.setShown(id, show)
             // The bridges add or remove it in Android.
+            SyncWorker.now(context)
+        }
+    }
+
+    fun setMine(id: String, mine: Mine) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { runCatching { core.setMine(id, mine) } }
+            reload()
             SyncWorker.now(context)
         }
     }
@@ -308,6 +351,7 @@ class HomeViewModel @Inject constructor(
                 s?.let { runCatching { core.signOut(it.transport) } }
                 AndroidAccounts.remove(context)
             }
+            reminders.forget()
             runner.forget()
             prefsStore.clearChoices()
             session.forget()
@@ -315,8 +359,9 @@ class HomeViewModel @Inject constructor(
     }
 }
 
+/** The settings screen, behind the calendar's settings button (decision 23). */
 @Composable
-fun HomeScreen(onSignInAgain: () -> Unit, vm: HomeViewModel = hiltViewModel()) {
+fun HomeScreen(onSignInAgain: () -> Unit, onBack: () -> Unit, vm: HomeViewModel = hiltViewModel()) {
     val ui by vm.ui.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val askAccess = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { vm.accessAnswered() }
@@ -329,16 +374,23 @@ fun HomeScreen(onSignInAgain: () -> Unit, vm: HomeViewModel = hiltViewModel()) {
         object : HomeActions {
             override fun syncNow() = vm.syncNow()
             override fun setShown(id: String, show: Boolean) = vm.setShown(id, show)
+            override fun setMine(id: String, mine: Mine) = vm.setMine(id, mine)
             override fun dismiss(id: Long) = vm.dismiss(id)
             override fun setPush(on: Boolean) {
                 if (on) (context as? Activity)?.let(vm::pushOn) else vm.pushOff()
             }
             override fun setTheme(t: Theme) = vm.setTheme(t)
             override fun openNetworkSettings() = context.startActivity(Network.appSettings(context))
+            override fun openNotificationSettings() = context.startActivity(
+                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                    .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
             override fun allowAccess() = askAccess.launch(Bridges.PERMISSIONS)
             override fun signInAgain() = onSignInAgain()
             override fun signOut() = vm.signOut()
         },
+        onBack = onBack,
     )
 }
 
@@ -346,10 +398,12 @@ private fun formatTime(ms: Long): String =
     DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT)
         .format(Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault()))
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeContent(ui: HomeUi, actions: HomeActions) {
+fun HomeContent(ui: HomeUi, actions: HomeActions, onBack: (() -> Unit)? = null) {
     val c = Cz.colors
     var confirmSignOut by remember { mutableStateOf(false) }
+    var editing by rememberSaveable { mutableStateOf<String?>(null) }
     LazyColumn(
         Modifier.fillMaxSize().background(c.canvas).safeDrawingPadding(),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 12.dp),
@@ -357,7 +411,14 @@ fun HomeContent(ui: HomeUi, actions: HomeActions) {
     ) {
         item {
             Column(Modifier.padding(horizontal = 4.dp, vertical = 8.dp)) {
-                Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineMedium)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    onBack?.let {
+                        IconButton(onClick = it, modifier = Modifier.padding(end = 4.dp)) {
+                            Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.back))
+                        }
+                    }
+                    Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.headlineMedium)
+                }
                 ui.account?.let { a ->
                     val host = ui.server?.substringAfter("://")?.substringBefore('/') ?: ""
                     Text(stringResource(R.string.home_who, a.displayName, host), color = c.quiet)
@@ -379,6 +440,13 @@ fun HomeContent(ui: HomeUi, actions: HomeActions) {
                 }
             }
         }
+        if (ui.remindersSilenced) {
+            item {
+                Banner(Icons.Rounded.NotificationsOff, stringResource(R.string.reminders_off_title), stringResource(R.string.reminders_off_body), c.caution) {
+                    Button(onClick = actions::openNotificationSettings) { Text(stringResource(R.string.reminders_off_allow)) }
+                }
+            }
+        }
         if (!ui.systemAccess) {
             item {
                 Banner(Icons.Rounded.CalendarMonth, stringResource(R.string.access_title), stringResource(R.string.access_body), c.accent) {
@@ -393,10 +461,10 @@ fun HomeContent(ui: HomeUi, actions: HomeActions) {
         }
         item { Heading(stringResource(R.string.calendars_title), stringResource(R.string.collections_hint)) }
         if (ui.calendars.isEmpty()) item { Empty(stringResource(R.string.none_yet)) }
-        items(ui.calendars, key = { it.id }) { CollectionCard(it, calendar = true, actions) }
+        items(ui.calendars, key = { it.id }) { row -> CollectionCard(row, calendar = true, actions) { editing = row.id } }
         item { Heading(stringResource(R.string.books_title), null) }
         if (ui.books.isEmpty()) item { Empty(stringResource(R.string.none_yet)) }
-        items(ui.books, key = { it.id }) { CollectionCard(it, calendar = false, actions) }
+        items(ui.books, key = { it.id }) { CollectionCard(it, calendar = false, actions, onOpen = null) }
         item { Heading(stringResource(R.string.push_title), null) }
         item { PushCard(ui.push, actions) }
         item { Heading(stringResource(R.string.appearance_title), null) }
@@ -405,6 +473,18 @@ fun HomeContent(ui: HomeUi, actions: HomeActions) {
             Spacer(Modifier.height(8.dp))
             TextButton(onClick = { confirmSignOut = true }, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.sign_out), color = c.danger)
+            }
+        }
+    }
+    ui.calendars.firstOrNull { it.id == editing }?.let { row ->
+        ModalBottomSheet(
+            onDismissRequest = { editing = null },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = c.canvas,
+        ) {
+            CalendarPrefsContent(row) { mine ->
+                editing = null
+                actions.setMine(row.id, mine)
             }
         }
     }
@@ -505,10 +585,15 @@ private fun SyncCard(ui: HomeUi, actions: HomeActions) {
 }
 
 @Composable
-private fun CollectionCard(row: CollectionRow, calendar: Boolean, actions: HomeActions) {
+private fun CollectionCard(row: CollectionRow, calendar: Boolean, actions: HomeActions, onOpen: (() -> Unit)?) {
     val c = Cz.colors
     Card {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        // A calendar opens my own view of it: name, color, default reminder.
+        Row(
+            Modifier.then(if (onOpen != null) Modifier.clip(RoundedCornerShape(10.dp)).clickable(onClick = onOpen) else Modifier),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
             Box(Modifier.size(14.dp).clip(CircleShape).background(parseColor(row.color) ?: c.accent))
             Column(Modifier.weight(1f)) {
                 Text(row.label, fontWeight = FontWeight.SemiBold)
@@ -530,7 +615,7 @@ private fun CollectionCard(row: CollectionRow, calendar: Boolean, actions: HomeA
                 checked = row.shown,
                 onCheckedChange = { actions.setShown(row.id, it) },
                 modifier = Modifier.semantics { contentDescription = label },
-                colors = SwitchDefaults.colors(checkedTrackColor = c.accent, checkedThumbColor = c.onAccent),
+                colors = czSwitchColors(),
             )
         }
     }
@@ -562,7 +647,7 @@ private fun PushCard(state: PushState, actions: HomeActions) {
                 enabled = state == PushState.ON || state == PushState.OFF,
                 onCheckedChange = actions::setPush,
                 modifier = Modifier.semantics { contentDescription = name },
-                colors = SwitchDefaults.colors(checkedTrackColor = c.accent, checkedThumbColor = c.onAccent),
+                colors = czSwitchColors(),
             )
         }
     }
@@ -617,7 +702,7 @@ fun explanationText(e: Explanation): String = when (e) {
 }
 
 @Composable
-private fun ConflictCard(row: ConflictRow, onDismiss: () -> Unit) {
+fun ConflictCard(row: ConflictRow, onDismiss: () -> Unit) {
     val c = Cz.colors
     Card {
         Text(row.title, fontWeight = FontWeight.SemiBold)

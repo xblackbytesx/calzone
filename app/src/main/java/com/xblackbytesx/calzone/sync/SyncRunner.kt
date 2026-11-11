@@ -14,6 +14,8 @@ import com.xblackbytesx.calzone.core.CoreError
 import com.xblackbytesx.calzone.model.CzJson
 import com.xblackbytesx.calzone.model.Report
 import com.xblackbytesx.calzone.prefs.PrefsStore
+import com.xblackbytesx.calzone.reminders.Reminders
+import com.xblackbytesx.calzone.widget.Widgets
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -73,6 +75,7 @@ class SyncRunner(
     private val session: Session,
     private val bridges: Bridges,
     private val prefs: PrefsStore,
+    private val reminders: Reminders,
 ) {
     private val mutex = Mutex()
     private val running = MutableStateFlow(false)
@@ -112,6 +115,9 @@ class SyncRunner(
                 }
             }
             record(outcome)
+            // What came in, and edits made here, may move the next reminder; offline too.
+            reminders.reschedule()
+            Widgets.update(context)
             outcome
         } finally {
             running.value = false

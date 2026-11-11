@@ -237,3 +237,87 @@ data class LocalChange(val seq: Long, val collection: String, val name: String? 
 /** The server's error body. */
 @Serializable
 data class ServerError(val error: String = "", val code: String = "")
+
+/**
+ * One occurrence on the calendar screens (calzone_client::calendar::Item):
+ * times are the phone's wall time, `2026-01-05T09:00:00`, or `2026-01-05`
+ * when all day (the end is then the day after the last day); `at` and
+ * `endAt` are the UTC instants in seconds.
+ */
+@Serializable
+data class Occurrence(
+    val collection: String,
+    val name: String,
+    val instance: String? = null,
+    val title: String = "",
+    val location: String? = null,
+    val start: String,
+    val end: String,
+    @SerialName("all_day") val allDay: Boolean = false,
+    val recurring: Boolean = false,
+    val at: Long = 0,
+    @SerialName("end_at") val endAt: Long = 0,
+    val calendar: String = "",
+    val color: String = "#3a7bd5",
+    /** The owner's display name and initials; `own` is the person's own calendar. */
+    val owner: String = "",
+    val initials: String = "",
+    val own: Boolean = true,
+    /** The person may change it (else only their own reminders). */
+    val editable: Boolean = true,
+    /** An edit made here is still waiting for the server. */
+    val pending: Boolean = false,
+)
+
+/** A reminder due (calzone_client::calendar::Due): when it rings (UTC seconds) and what for. */
+@Serializable
+data class Due(val fire: Long, val occurrence: Occurrence)
+
+/** Quick add's reading of "dentist thu 3pm" (calzone_core::view::QuickDraft). */
+@Serializable
+data class QuickDraft(
+    val title: String,
+    @SerialName("all_day") val allDay: Boolean = false,
+    /** `2026-01-05` or `2026-01-05T15:00:00`; for days the end is the day after. */
+    val start: String? = null,
+    val end: String? = null,
+)
+
+/** A write's answer: the event's name, a series a "this and following" change made, and its undo id. */
+@Serializable
+data class Written(val name: String, val created: String? = null, val undo: Long)
+
+/**
+ * One event as the event sheet shows it (calzone_client::calendar::Event,
+ * the core's `view::Detail` with its calendar's look).
+ */
+@Serializable
+data class EventView(
+    val collection: String,
+    val name: String,
+    val instance: String? = null,
+    val title: String = "",
+    val location: String = "",
+    val description: String = "",
+    @SerialName("all_day") val allDay: Boolean = false,
+    /** `2026-01-05` and `09:00` (empty when all day). */
+    @SerialName("start_date") val startDate: String,
+    @SerialName("start_time") val startTime: String = "",
+    /** For all-day events the last day, inclusive. */
+    @SerialName("end_date") val endDate: String,
+    @SerialName("end_time") val endTime: String = "",
+    /** `none`, `daily`, `weekly`, `monthly`, `yearly` or `custom`. */
+    val repeat: String = "none",
+    @SerialName("repeat_until") val repeatUntil: String? = null,
+    @SerialName("repeat_count") val repeatCount: Int? = null,
+    val recurring: Boolean = false,
+    /** The person's own reminders, minutes before the start. */
+    val alarms: List<Long> = emptyList(),
+    val calendar: String = "",
+    val color: String = "#3a7bd5",
+    val owner: String = "",
+    val initials: String = "",
+    val own: Boolean = true,
+    val editable: Boolean = true,
+    val pending: Boolean = false,
+)

@@ -4,13 +4,19 @@ import com.xblackbytesx.calzone.model.Account
 import com.xblackbytesx.calzone.model.Conflict
 import com.xblackbytesx.calzone.model.ContactRow
 import com.xblackbytesx.calzone.model.CzJson
+import com.xblackbytesx.calzone.model.Due
 import com.xblackbytesx.calzone.model.EventRow
 import com.xblackbytesx.calzone.model.EventRows
+import com.xblackbytesx.calzone.model.EventView
 import com.xblackbytesx.calzone.model.LocalChange
 import com.xblackbytesx.calzone.model.ObjectMeta
+import com.xblackbytesx.calzone.model.Mine
+import com.xblackbytesx.calzone.model.Occurrence
+import com.xblackbytesx.calzone.model.QuickDraft
 import com.xblackbytesx.calzone.model.Report
 import com.xblackbytesx.calzone.model.SignedIn
 import com.xblackbytesx.calzone.model.StoredCollection
+import com.xblackbytesx.calzone.model.Written
 import kotlinx.serialization.builtins.ListSerializer
 import uniffi.calzone_ffi.CalZone
 import uniffi.calzone_ffi.CzException
@@ -31,7 +37,7 @@ sealed class CoreError(message: String) : Exception(message) {
     /** An answer the app did not expect (an older server, a refused code). */
     class Server(message: String) : CoreError(message)
 
-    /** A bug: something the app asked for cannot be done. */
+    /** Something the app asked for cannot be done (a view-only calendar, a bad date). */
     class Bug(message: String) : CoreError(message)
 }
 
@@ -124,6 +130,54 @@ class Core(path: String) {
     /** A raw contact another app made: a new vCard; its name. */
     fun createFromContactRow(collection: String, row: ContactRow, uid: String, fallbackName: String): String =
         call { cz.createFromContactRow(collection, CzJson.encodeToString(ContactRow.serializer(), row), uid, fallbackName) }
+
+    // --- CalZone's own calendar screens (decision 52 in calzone-server) ---
+
+    /**
+     * Every event occurring in `[from, to)` (UTC seconds) in the calendars this
+     * phone shows (`hidden`: switched off here), in `zone`, sorted by start,
+     * all-day first. The core keeps each event expanded over a window, so the
+     * first call after start is the slow one.
+     */
+    fun occurrences(from: Long, to: Long, zone: String, hidden: List<String>): List<Occurrence> =
+        call { CzJson.decodeFromString(ListSerializer(Occurrence.serializer()), cz.occurrences(from, to, zone, hidden)) }
+
+    /** One event (`instance`: one occurrence of it) for the event sheet, or null when it is gone. */
+    fun event(collection: String, name: String, instance: String?, zone: String): EventView? =
+        call { cz.event(collection, name, instance, zone)?.let { CzJson.decodeFromString(EventView.serializer(), it) } }
+
+    /**
+     * A new event from the editor's input JSON (only what the web's API takes:
+     * `summary`, `location`, `description`, `start`, `end`, `repeat`, `alarms`),
+     * named `<uid>.ics`. With no `alarms`, the calendar's default reminder.
+     */
+    fun createEvent(collection: String, input: String, zone: String, uid: String): Written =
+        call { CzJson.decodeFromString(Written.serializer(), cz.createEvent(collection, input, zone, uid)) }
+
+    /** Change an event: only what changed. `scope` is `this`, `following` or `all`; `newUid` names a split's new series. */
+    fun updateEvent(collection: String, name: String, instance: String?, scope: String, input: String, zone: String, newUid: String): Written =
+        call { CzJson.decodeFromString(Written.serializer(), cz.updateEvent(collection, name, instance, scope, input, zone, newUid)) }
+
+    fun deleteEvent(collection: String, name: String, instance: String?, scope: String): Written =
+        call { CzJson.decodeFromString(Written.serializer(), cz.deleteEvent(collection, name, instance, scope)) }
+
+    /** Undo the last write; false when it was not the last one, or something changed it since. */
+    fun undo(id: Long): Boolean = call { cz.undo(id.toULong()) }
+
+    /** My reminders ringing in `[from, to)` (UTC seconds), soonest first, in the calendars not `hidden` (decision 51). */
+    fun reminders(from: Long, to: Long, zone: String, hidden: List<String>): List<Due> =
+        call { CzJson.decodeFromString(ListSerializer(Due.serializer()), cz.reminders(from, to, zone, hidden)) }
+
+    /** Events whose title, place or notes hold every word of `query`, one occurrence each, coming ones first. */
+    fun search(query: String, zone: String, hidden: List<String>, limit: Int = 100): List<Occurrence> =
+        call { CzJson.decodeFromString(ListSerializer(Occurrence.serializer()), cz.search(query, zone, hidden, limit.toUInt())) }
+
+    /** "dentist thu 3pm" read in `lang` (`en`, `nl`), or null when there is no title in it. */
+    fun quickAdd(text: String, lang: String, zone: String): QuickDraft? =
+        cz.quickAdd(text, lang, zone)?.let { CzJson.decodeFromString(QuickDraft.serializer(), it) }
+
+    /** The person's own view of a calendar: shown at once, sent with the next sync. */
+    fun setMine(collection: String, mine: Mine) = call { cz.setMine(collection, CzJson.encodeToString(Mine.serializer(), mine)) }
 
     /** Delete a stored object; it goes to the server with the next sync. */
     fun delete(collection: String, name: String) = call { cz.edit(collection, name, null) }

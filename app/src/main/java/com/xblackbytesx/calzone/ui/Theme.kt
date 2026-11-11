@@ -98,3 +98,16 @@ fun CzTheme(dark: Boolean = true, content: @Composable () -> Unit) {
         CompositionLocalProvider(LocalCz provides c, LocalContentColor provides c.text, content = content)
     }
 }
+
+/** A switch in the app's colors; off has a visible thumb and edge on the dark canvas too. */
+@Composable
+fun czSwitchColors(): androidx.compose.material3.SwitchColors {
+    val c = Cz.colors
+    return androidx.compose.material3.SwitchDefaults.colors(
+        checkedTrackColor = c.accent,
+        checkedThumbColor = c.onAccent,
+        uncheckedTrackColor = c.sunken,
+        uncheckedThumbColor = c.quiet,
+        uncheckedBorderColor = c.quiet,
+    )
+}
