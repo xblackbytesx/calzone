@@ -683,7 +683,12 @@ private fun PushCard(state: PushState, actions: HomeActions) {
 @Composable
 private fun ThemeCard(theme: Theme, actions: HomeActions) {
     Card {
-        val options = listOf(Theme.DARK to R.string.theme_dark, Theme.LIGHT to R.string.theme_light, Theme.SYSTEM to R.string.theme_system)
+        val options = listOf(
+            Theme.DARK to R.string.theme_dark,
+            Theme.BLACK to R.string.theme_black,
+            Theme.LIGHT to R.string.theme_light,
+            Theme.SYSTEM to R.string.theme_system,
+        )
         SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
             options.forEachIndexed { i, (t, label) ->
                 SegmentedButton(

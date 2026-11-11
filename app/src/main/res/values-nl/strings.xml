@@ -93,6 +93,7 @@
 
     <string name="appearance_title">Weergave</string>
     <string name="theme_dark">Donker</string>
+    <string name="theme_black">Zwart</string>
     <string name="theme_light">Licht</string>
     <string name="theme_system">Systeem</string>
 

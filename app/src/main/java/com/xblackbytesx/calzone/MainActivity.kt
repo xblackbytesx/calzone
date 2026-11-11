@@ -53,11 +53,11 @@ class MainActivity : ComponentActivity() {
             val p by prefs.prefs.collectAsStateWithLifecycle(Prefs())
             val signedIn by session.signedIn.collectAsStateWithLifecycle(null)
             val dark = when (p.theme) {
-                Theme.DARK -> true
+                Theme.DARK, Theme.BLACK -> true
                 Theme.LIGHT -> false
                 Theme.SYSTEM -> isSystemInDarkTheme()
             }
-            CzTheme(dark = dark) {
+            CzTheme(dark = dark, black = p.theme == Theme.BLACK) {
                 when {
                     signedIn == null -> {}
                     signedIn == false || link != null || signInAgain -> SignInScreen(

@@ -228,8 +228,8 @@ class ScreenshotTest {
 
     private val out = File(System.getProperty("cz.screenshots") ?: "build/screenshots").apply { mkdirs() }
 
-    private fun shot(name: String, dark: Boolean = true, content: @Composable () -> Unit) {
-        compose.setContent { CzTheme(dark = dark) { content() } }
+    private fun shot(name: String, dark: Boolean = true, black: Boolean = false, content: @Composable () -> Unit) {
+        compose.setContent { CzTheme(dark = dark, black = black) { content() } }
         compose.waitForIdle()
         compose.onRoot().captureRoboImage(File(out, "$name.png").absolutePath)
     }
@@ -293,6 +293,12 @@ class ScreenshotTest {
     // nl-rNL as on the phones: a week starts on Monday there.
     @Config(qualifiers = "nl-rNL-w411dp-h891dp-xxhdpi")
     fun weekDutch() = shot("week-nl", dark = false) { CalendarContent(agenda.copy(view = CalendarView.WEEK), NoAgenda) }
+
+    @Test
+    fun monthDayBlack() = shot("month-day-black", black = true) { CalendarContent(agenda.copy(view = CalendarView.MONTH_DAY), NoAgenda) }
+
+    @Test
+    fun homeBlack() = shot("home-black", black = true) { HomeContent(home.copy(theme = Theme.BLACK), Nothing) }
 
     @Test
     fun monthDay() = shot("month-day") { CalendarContent(agenda.copy(view = CalendarView.MONTH_DAY), NoAgenda) }

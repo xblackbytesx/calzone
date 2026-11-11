@@ -42,6 +42,18 @@ val DarkCz = CzColors(
     danger = Color(0xFFFF8A80),
 )
 
+/**
+ * Black for OLED screens (decision 36): a true black canvas, so the screen
+ * is off where nothing is shown; cards and sheets lifted just enough to
+ * tell apart. Text, accent and the other roles are Dark's.
+ */
+val BlackCz = DarkCz.copy(
+    canvas = Color(0xFF000000),
+    surface = Color(0xFF111114),
+    sunken = Color(0xFF1B1B20),
+    line = Color(0xFF2A2A31),
+)
+
 val LightCz = CzColors(
     canvas = Color(0xFFF6F4EF),
     surface = Color(0xFFFFFFFF),
@@ -72,8 +84,12 @@ fun parseColor(hex: String?): Color? {
 }
 
 @Composable
-fun CzTheme(dark: Boolean = true, content: @Composable () -> Unit) {
-    val c = if (dark) DarkCz else LightCz
+fun CzTheme(dark: Boolean = true, black: Boolean = false, content: @Composable () -> Unit) {
+    val c = when {
+        !dark -> LightCz
+        black -> BlackCz
+        else -> DarkCz
+    }
     val scheme = if (dark) {
         darkColorScheme(
             primary = c.accent, onPrimary = c.onAccent, background = c.canvas, onBackground = c.text,

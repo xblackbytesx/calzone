@@ -11,8 +11,8 @@ import kotlinx.coroutines.flow.map
 
 private val Context.prefsStore by preferencesDataStore("prefs")
 
-/** `dark` (the default, decision 36 in calzone-server), `light` or `system`. */
-enum class Theme { DARK, LIGHT, SYSTEM }
+/** `dark` (the default, decision 36 in calzone-server), `black` (OLED, app decision 36), `light` or `system`. */
+enum class Theme { DARK, BLACK, LIGHT, SYSTEM }
 
 data class Prefs(
     val theme: Theme = Theme.DARK,

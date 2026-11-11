@@ -452,6 +452,14 @@ Settled 2026-11-11 (phase 4b step 6):
     by an inexact alarm just after midnight. Signed out or failing, they
     say so and open the app.
 
+Settled 2026-11-11 (the owner's request, after v0.2.1):
+
+36. **A Black theme for OLED screens** next to Dark, Light and System
+    (Settings, Appearance): Dark's colors with a true black canvas and
+    cards and sheets lifted just enough to tell apart (`BlackCz`). System
+    still means Dark at night. The widgets keep following the phone's
+    dark or light setting with Dark's colors.
+
 ## Invariants
 
 - `uniffi.calzone_ffi` is imported only by `core/Core.kt` (and tests).
