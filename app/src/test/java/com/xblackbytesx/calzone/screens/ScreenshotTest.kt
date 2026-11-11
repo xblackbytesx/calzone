@@ -190,6 +190,7 @@ private val agenda = CalendarUi(
     from = from,
     to = to,
     items = week,
+    byDate = agendaDays(week, from, to, today).associateBy { it.date },
     days = agendaDays(week.filter { it.start >= "2026-11-08" && it.start < "2026-11-22" }, today.minusDays(3), today.plusDays(10), today),
     loading = false,
     writable = calendars,
@@ -302,6 +303,10 @@ class ScreenshotTest {
 
     @Test
     fun monthDay() = shot("month-day") { CalendarContent(agenda.copy(view = CalendarView.MONTH_DAY), NoAgenda) }
+
+    // The README shows the default view in each theme.
+    @Test
+    fun monthDayLight() = shot("month-day-light", dark = false) { CalendarContent(agenda.copy(view = CalendarView.MONTH_DAY), NoAgenda) }
 
     @Test
     @Config(qualifiers = "nl-rNL-w411dp-h891dp-xxhdpi")

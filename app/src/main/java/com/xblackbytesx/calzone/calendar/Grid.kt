@@ -188,3 +188,29 @@ fun monthDays(items: List<Occurrence>, month: LocalDate, today: LocalDate): List
     val first = month.withDayOfMonth(1)
     return agendaDays(items, first, first.plusMonths(1), today)
 }
+
+/**
+ * The loaded days by date (decision 37): built once per load, off the main
+ * thread, so a page only looks its days up instead of going through every
+ * occurrence again while it swipes in.
+ */
+typealias DayIndex = Map<LocalDate, AgendaDay>
+
+/** The occurrences on any of `days`, each once, in day order. */
+fun itemsOn(index: DayIndex, days: List<LocalDate>): List<Occurrence> =
+    days.flatMap { d -> index[d]?.entries.orEmpty().map { it.occurrence } }.distinct()
+
+/** As [dayColors], from the index. */
+fun dayColorsOf(index: DayIndex, days: List<LocalDate>, max: Int = 3): Map<LocalDate, List<String>> =
+    days.mapNotNull { d ->
+        index[d]?.entries?.map { it.occurrence.color }?.distinct()?.take(max)?.takeIf { it.isNotEmpty() }?.let { d to it }
+    }.toMap()
+
+/** As [monthDays], from the index. */
+fun monthDaysOf(index: DayIndex, month: LocalDate, today: LocalDate): List<AgendaDay> {
+    val first = month.withDayOfMonth(1)
+    return (0 until month.lengthOfMonth()).mapNotNull { i ->
+        val d = first.plusDays(i.toLong())
+        index[d]?.takeIf { it.entries.isNotEmpty() || d == today } ?: if (d == today) AgendaDay(d, emptyList()) else null
+    }
+}

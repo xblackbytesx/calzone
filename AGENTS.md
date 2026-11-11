@@ -90,6 +90,12 @@ the core's side is tested in calzone-server. **Device-untested**: every
 alarm, the notifications and their buttons, the reboot before and after
 unlock, a time zone change, hours of Doze, the permission question.
 
+2026-11-11: the README rewritten in the server's style (the owner's
+request): badges, the default view in all three themes, a feature list
+and a screenshot table. Its images are a selection of `make screenshots`
+(one new test, `monthDayLight`) scaled to 540 pixels wide in
+`docs/screenshots/`. No widget images: Glance has no screenshot test here.
+
 ## Build and verify
 
 Docker only (`make`); both repos must be checked out side by side.
@@ -452,13 +458,29 @@ Settled 2026-11-11 (phase 4b step 6):
     by an inexact alarm just after midnight. Signed out or failing, they
     say so and open the app.
 
-Settled 2026-11-11 (the owner's request, after v0.2.1):
+Settled 2026-11-11 (the owner's request, after v0.2.1; released as v0.3.0):
 
 36. **A Black theme for OLED screens** next to Dark, Light and System
     (Settings, Appearance): Dark's colors with a true black canvas and
     cards and sheets lifted just enough to tell apart (`BlackCz`). System
     still means Dark at night. The widgets keep following the phone's
     dark or light setting with Dark's colors.
+
+Settled 2026-11-11 (the owner's feedback: stutter when swiping the month):
+
+37. **No per-occurrence work on the main thread while swiping; short
+    transitions only.** Each load groups the occurrences by day once, on
+    the IO thread (`CalendarUi.byDate`); the grids and the month's list
+    look their days up there (`itemsOn`, `dayColorsOf`, `monthDaysOf`)
+    instead of going through every loaded occurrence per page. The grids
+    load 120 days back and 240 ahead and reload only within 60 and 120
+    days of an edge. In month and days, a swiped-to month selects today
+    (this month) or its 1st, and its list slides in from the swipe's side
+    (180 ms) already at that day instead of scrolling there; a day tapped
+    in the same month scrolls smoothly; a grayed day of another month
+    turns the page. A 150 ms crossfade between views and out of
+    "Loading", list items fade in and out (150 and 100 ms), the selected
+    day's ring fades (120 ms). Nothing waits on an animation.
 
 ## Invariants
 

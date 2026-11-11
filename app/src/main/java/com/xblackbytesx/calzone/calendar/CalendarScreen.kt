@@ -3,6 +3,8 @@ package com.xblackbytesx.calzone.calendar
 import android.content.Context
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -157,6 +159,8 @@ data class CalendarUi(
     val to: LocalDate = today,
     val items: List<Occurrence> = emptyList(),
     val days: List<AgendaDay> = emptyList(),
+    /** [days] by date, for the grids (decision 37). */
+    val byDate: DayIndex = emptyMap(),
     /** The first load has not finished (the core expands every event once). */
     val loading: Boolean = true,
     val syncing: Boolean = false,
@@ -239,9 +243,9 @@ interface CalendarActions {
 /** How far the agenda reaches before it loads more, in days. */
 private const val STEP = 90L
 
-/** The grids load around the date in sight: this far back and ahead. */
-private const val BACK = 75L
-private const val AHEAD = 105L
+/** The grids load around the date in sight: this far back and ahead (decision 37: wide, so swiping rarely reloads). */
+private const val BACK = 120L
+private const val AHEAD = 240L
 
 @HiltViewModel
 class CalendarViewModel @Inject constructor(
@@ -341,6 +345,7 @@ class CalendarViewModel @Inject constructor(
         val prefs = prefsStore.prefs.first()
         val zone = ZoneId.systemDefault()
         val (f, t) = from to to
+        val today = _ui.value.today
         val loaded = withContext(Dispatchers.IO) {
             runCatching {
                 val collections = core.collections()
@@ -360,7 +365,9 @@ class CalendarViewModel @Inject constructor(
                     .sortedBy { if (it.id == prefs.lastCalendar) 0 else 1 }
                 val legend = calendars.filter { it.info.id !in hidden }
                     .map { CalendarChoice(it.info.id, it.info.label, it.info.shownColor, it.info.mine.defaultAlarm) }
-                Loaded(items, conflicts, calendars.size > hidden.size, writable, legend)
+                // Grouped here, not on the main thread (decision 37).
+                val days = agendaDays(items, f, t, today)
+                Loaded(items, conflicts, calendars.size > hidden.size, writable, legend, days, days.associateBy { it.date })
             }.getOrNull()
         } ?: return@withLock
         val (items, conflicts, any, writable, legend) = loaded
@@ -369,7 +376,8 @@ class CalendarViewModel @Inject constructor(
                 from = f,
                 to = t,
                 items = items,
-                days = agendaDays(items, f, t, it.today),
+                days = loaded.days,
+                byDate = loaded.byDate,
                 loading = false,
                 conflicts = conflicts,
                 hasCalendars = any,
@@ -385,6 +393,8 @@ class CalendarViewModel @Inject constructor(
         val any: Boolean,
         val writable: List<CalendarChoice>,
         val legend: List<CalendarChoice>,
+        val days: List<AgendaDay>,
+        val byDate: DayIndex,
     )
 
     fun loadEarlier() {
@@ -402,7 +412,7 @@ class CalendarViewModel @Inject constructor(
         val enough = if (view == CalendarView.AGENDA) {
             date >= from && date < to
         } else {
-            from <= date.minusDays(45) && to >= date.plusDays(75)
+            from <= date.minusDays(60) && to >= date.plusDays(120)
         }
         if (enough) return
         from = date.minusDays(BACK)
@@ -820,14 +830,22 @@ fun CalendarContent(ui: CalendarUi, actions: CalendarActions) {
             }
         }
         PullToRefreshBox(isRefreshing = ui.syncing, onRefresh = actions::refresh, modifier = Modifier.fillMaxWidth().weight(1f)) {
-            when {
-                ui.loading -> Quiet(stringResource(R.string.agenda_loading), Modifier.padding(horizontal = 16.dp))
-                !ui.hasCalendars && ui.view != CalendarView.AGENDA -> Quiet(stringResource(R.string.agenda_empty), Modifier.padding(horizontal = 16.dp))
-                else -> when (ui.view) {
-                    CalendarView.AGENDA -> AgendaList(ui, actions, f)
-                    CalendarView.DAY, CalendarView.WEEK -> HoursPager(ui, actions, f)
-                    CalendarView.MONTH -> MonthPager(ui, actions, f)
-                    CalendarView.MONTH_DAY -> MonthDayView(ui, actions, f)
+            // A quick crossfade between views and out of "Loading" (decision 37).
+            val shown = when {
+                ui.loading -> null
+                !ui.hasCalendars && ui.view != CalendarView.AGENDA -> CalendarView.AGENDA to false
+                else -> ui.view to true
+            }
+            Crossfade(targetState = shown, animationSpec = tween(150), label = "view") { s ->
+                when {
+                    s == null -> Quiet(stringResource(R.string.agenda_loading), Modifier.padding(horizontal = 16.dp))
+                    !s.second -> Quiet(stringResource(R.string.agenda_empty), Modifier.padding(horizontal = 16.dp))
+                    else -> when (s.first) {
+                        CalendarView.AGENDA -> AgendaList(ui, actions, f)
+                        CalendarView.DAY, CalendarView.WEEK -> HoursPager(ui, actions, f, s.first)
+                        CalendarView.MONTH -> MonthPager(ui, actions, f)
+                        CalendarView.MONTH_DAY -> MonthDayView(ui, actions, f)
+                    }
                 }
             }
         }
@@ -874,7 +892,7 @@ fun CalendarContent(ui: CalendarUi, actions: CalendarActions) {
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
             containerColor = c.canvas,
         ) {
-            DayListContent(dayEntries(ui.items, day), ui.today, f, actions)
+            DayListContent(ui.byDate[day] ?: AgendaDay(day, emptyList()), ui.today, f, actions)
         }
     }
     ui.sheet?.let { sheet ->
@@ -933,7 +951,11 @@ private fun AgendaList(ui: CalendarUi, actions: CalendarActions, f: Formats) {
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         if (!ui.hasCalendars) item(key = "empty") { Quiet(stringResource(R.string.agenda_empty)) }
-        items(ui.days, key = { "d-${it.date}" }) { day -> DayBlock(day, ui.today, f, actions) }
+        items(ui.days, key = { "d-${it.date}" }) { day ->
+            Box(Modifier.animateItem(fadeInSpec = tween(150), placementSpec = null, fadeOutSpec = tween(100))) {
+                DayBlock(day, ui.today, f, actions)
+            }
+        }
     }
 }
 

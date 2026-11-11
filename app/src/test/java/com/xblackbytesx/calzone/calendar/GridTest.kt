@@ -148,4 +148,26 @@ class GridTest {
         val list = monthDays(items, d("2026-11-25"), today = d("2026-11-15"))
         assertEquals(listOf("2026-11-11", "2026-11-15", "2026-11-19", "2026-11-20"), list.map { it.date.toString() })
     }
+
+    @Test
+    fun theIndexGivesWhatTheFullPassGives() {
+        fun c(title: String, color: String, start: String, end: String, allDay: Boolean = false) =
+            Occurrence(collection = color, name = "$title.ics", title = title, start = start, end = end, allDay = allDay, color = color)
+        val items = listOf(
+            c("Swim", "#3a7bd5", "2026-11-11T16:00:00", "2026-11-11T17:00:00"),
+            c("Book club", "#d53a7b", "2026-11-11T20:00:00", "2026-11-11T22:00:00"),
+            c("Trip", "#00897b", "2026-11-19", "2026-11-22", allDay = true),
+            c("Night", "#d53a7b", "2026-11-12T22:00:00", "2026-11-13T06:00:00"),
+            c("December", "#00897b", "2026-12-02T09:00:00", "2026-12-02T10:00:00"),
+        )
+        val today = d("2026-11-15")
+        val index = agendaDays(items, d("2026-10-01"), d("2027-01-01"), today).associateBy { it.date }
+        val grid = monthWeeks(d("2026-11-11"), DayOfWeek.MONDAY).flatten()
+        assertEquals(dayColors(items, grid), dayColorsOf(index, grid))
+        assertEquals(monthDays(items, d("2026-11-25"), today), monthDaysOf(index, d("2026-11-25"), today))
+        assertEquals(listOf("Trip"), itemsOn(index, listOf(d("2026-11-20"), d("2026-11-21"))).map { it.title })
+        val week = weekOf(d("2026-11-11"), DayOfWeek.MONDAY)
+        assertEquals(spans(items, week, timed = true), spans(itemsOn(index, week), week, timed = true))
+        for (day in week) assertEquals(timedPieces(items, day), timedPieces(itemsOn(index, listOf(day)), day))
+    }
 }

@@ -1,6 +1,13 @@
 package com.xblackbytesx.calzone.calendar
 
 import androidx.compose.foundation.ScrollState
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
@@ -35,6 +42,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -61,6 +69,7 @@ import com.xblackbytesx.calzone.model.Occurrence
 import com.xblackbytesx.calzone.ui.Cz
 import com.xblackbytesx.calzone.ui.parseColor
 import java.time.LocalDate
+import java.time.YearMonth
 import java.time.LocalTime
 import kotlin.math.abs
 
@@ -101,10 +110,15 @@ private fun rememberPages(ui: CalendarUi, view: CalendarView, actions: CalendarA
     val count = remember(view, first) { Pages.count(view, first) }
     val pager = rememberPagerState(initialPage = Pages.of(view, ui.anchor, first)) { count }
     val anchor by rememberUpdatedState(ui.anchor)
+    val today by rememberUpdatedState(ui.today)
     var handled by rememberSaveable { mutableIntStateOf(ui.jump.seq) }
     LaunchedEffect(pager, view, first) {
         snapshotFlow { pager.settledPage }.collect { p ->
-            if (p != Pages.of(view, anchor, first)) actions.show(Pages.date(view, p, anchor, first))
+            if (p == Pages.of(view, anchor, first)) return@collect
+            val d = Pages.date(view, p, anchor, first)
+            // Month and days: a swiped-to month shows from today in this month, else from its 1st.
+            val shown = if (view != CalendarView.MONTH_DAY) d else if (YearMonth.from(d) == YearMonth.from(today)) today else d.withDayOfMonth(1)
+            actions.show(shown)
         }
     }
     LaunchedEffect(ui.jump) {
@@ -118,8 +132,7 @@ private fun rememberPages(ui: CalendarUi, view: CalendarView, actions: CalendarA
 
 /** The day and week views: the hours, side by side where events overlap, swiped a day or a week at a time. */
 @Composable
-internal fun HoursPager(ui: CalendarUi, actions: CalendarActions, f: Formats) {
-    val view = ui.view
+internal fun HoursPager(ui: CalendarUi, actions: CalendarActions, f: Formats, view: CalendarView = ui.view) {
     val pager = rememberPages(ui, view, actions, f)
     val density = LocalDensity.current
     // One scroll for every page, so a swipe keeps the hour in sight.
@@ -137,8 +150,9 @@ internal fun HoursPager(ui: CalendarUi, actions: CalendarActions, f: Formats) {
 private fun HoursPage(days: List<LocalDate>, ui: CalendarUi, actions: CalendarActions, f: Formats, hours: ScrollState) {
     val c = Cz.colors
     val wide = days.size == 1
-    val pieces = remember(ui.items, days) { days.map { timedPieces(ui.items, it) } }
-    val bars = remember(ui.items, days) { spans(ui.items, days, timed = false) }
+    // Only the occurrences on these days (decision 37), not every loaded one.
+    val pieces = remember(ui.byDate, days) { days.map { timedPieces(itemsOn(ui.byDate, listOf(it)), it) } }
+    val bars = remember(ui.byDate, days) { spans(itemsOn(ui.byDate, days), days, timed = false) }
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().padding(start = GUTTER, top = 4.dp, bottom = 4.dp)) {
             days.forEach { d ->
@@ -377,7 +391,7 @@ internal fun MonthPager(ui: CalendarUi, actions: CalendarActions, f: Formats) {
 @Composable
 private fun WeekRow(week: List<LocalDate>, month: LocalDate, ui: CalendarUi, actions: CalendarActions, f: Formats, modifier: Modifier) {
     val c = Cz.colors
-    val bars = remember(ui.items, week) { spans(ui.items, week, timed = true) }
+    val bars = remember(ui.byDate, week) { spans(itemsOn(ui.byDate, week), week, timed = true) }
     val line = c.line
     BoxWithConstraints(modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxSize()) {
@@ -422,14 +436,6 @@ private val SMALL_ROW = 46.dp
 internal fun MonthDayView(ui: CalendarUi, actions: CalendarActions, f: Formats) {
     val c = Cz.colors
     val pager = rememberPages(ui, CalendarView.MONTH_DAY, actions, f)
-    val month = ui.anchor
-    val days = remember(ui.items, month.year, month.monthValue, ui.today) { monthDays(ui.items, month, ui.today) }
-    val list = androidx.compose.foundation.lazy.rememberLazyListState()
-    // The selected day (or the next one with something) at the top of the list.
-    LaunchedEffect(ui.anchor, days) {
-        val i = days.indexOfFirst { it.date >= ui.anchor }.takeIf { it >= 0 } ?: (days.size - 1).coerceAtLeast(0)
-        if (days.isNotEmpty()) list.animateScrollToItem(i)
-    }
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp)) {
             weekOf(ui.today, f.firstDay).forEach { d ->
@@ -449,7 +455,7 @@ internal fun MonthDayView(ui: CalendarUi, actions: CalendarActions, f: Formats) 
             val weeks = remember(m.year, m.monthValue, f.firstDay) {
                 monthWeeks(m, f.firstDay).let { w -> w + (1..(6 - w.size)).map { n -> w.last().map { it.plusWeeks(n.toLong()) } } }
             }
-            val dots = remember(ui.items, weeks) { dayColors(ui.items, weeks.flatten()) }
+            val dots = remember(ui.byDate, weeks) { dayColorsOf(ui.byDate, weeks.flatten()) }
             Column(Modifier.fillMaxSize().padding(horizontal = 4.dp)) {
                 weeks.forEach { week ->
                     Row(Modifier.fillMaxWidth().height(SMALL_ROW)) {
@@ -461,13 +467,46 @@ internal fun MonthDayView(ui: CalendarUi, actions: CalendarActions, f: Formats) 
             }
         }
         Box(Modifier.fillMaxWidth().height(1.dp).background(c.line))
-        androidx.compose.foundation.lazy.LazyColumn(
-            state = list,
+        // Another month: its list slides in from the side it was swiped from, already at its day (no scroll
+        // through the list after the swipe). Short, so it never holds anything up (decision 37).
+        AnimatedContent(
+            targetState = YearMonth.from(ui.anchor),
+            transitionSpec = {
+                val dir = if (targetState > initialState) 1 else -1
+                (slideInHorizontally(tween(180)) { w -> dir * w / 6 } + fadeIn(tween(180))) togetherWith fadeOut(tween(90))
+            },
             modifier = Modifier.fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp),
-        ) {
-            if (days.isEmpty()) item(key = "empty") { Quiet(stringResource(R.string.month_nothing)) }
-            items(days.size, key = { "d-${days[it].date}" }) { i -> DayBlock(days[i], ui.today, f, actions) }
+            label = "month list",
+        ) { month ->
+            MonthList(month, ui, actions, f)
+        }
+    }
+}
+
+/** One month's days under the small month; a day tapped in it scrolls up to the top. */
+@Composable
+private fun MonthList(month: YearMonth, ui: CalendarUi, actions: CalendarActions, f: Formats) {
+    val days = remember(ui.byDate, month, ui.today) { monthDaysOf(ui.byDate, month.atDay(1), ui.today) }
+    fun indexOf(d: LocalDate) = days.indexOfFirst { it.date >= d }.takeIf { it >= 0 } ?: (days.size - 1).coerceAtLeast(0)
+    val start = if (YearMonth.from(ui.anchor) == month) ui.anchor else month.atDay(1)
+    val list = androidx.compose.foundation.lazy.rememberLazyListState(initialFirstVisibleItemIndex = indexOf(start))
+    val anchor = ui.anchor
+    var placed by remember { mutableStateOf(anchor) }
+    LaunchedEffect(anchor, days) {
+        if (YearMonth.from(anchor) != month || days.isEmpty()) return@LaunchedEffect
+        if (anchor != placed) list.animateScrollToItem(indexOf(anchor)) else list.scrollToItem(indexOf(anchor))
+        placed = anchor
+    }
+    androidx.compose.foundation.lazy.LazyColumn(
+        state = list,
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp),
+    ) {
+        if (days.isEmpty()) item(key = "empty") { Quiet(stringResource(R.string.month_nothing)) }
+        items(days.size, key = { "d-${days[it].date}" }) { i ->
+            Box(Modifier.animateItem(fadeInSpec = tween(150), placementSpec = tween(150), fadeOutSpec = tween(100))) {
+                DayBlock(days[i], ui.today, f, actions)
+            }
         }
     }
 }
@@ -477,17 +516,21 @@ internal fun MonthDayView(ui: CalendarUi, actions: CalendarActions, f: Formats) 
 private fun SmallDay(d: LocalDate, month: LocalDate, ui: CalendarUi, dots: List<String>, f: Formats, actions: CalendarActions, modifier: Modifier) {
     val c = Cz.colors
     val selected = d == ui.anchor && d != ui.today
+    val ring by animateColorAsState(if (selected) c.accent else Color.Transparent, tween(120), label = "selected")
     val label = f.weekday(d, ui.today)
     Column(
         modifier.fillMaxHeight().clip(RoundedCornerShape(10.dp))
-            .combinedClickable(onLongClick = { actions.newEvent(newStart(d, ui.today, ui.now)) }) { actions.show(d) }
+            // A grayed day of the month before or after turns the page there too.
+            .combinedClickable(onLongClick = { actions.newEvent(newStart(d, ui.today, ui.now)) }) {
+                if (d.month != month.month) actions.goTo(d) else actions.show(d)
+            }
             .semantics { contentDescription = label },
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(
             Modifier.padding(top = 4.dp).size(30.dp).clip(CircleShape)
                 .background(if (d == ui.today) c.accent else Color.Transparent)
-                .then(if (selected) Modifier.border(1.5.dp, c.accent, CircleShape) else Modifier),
+                .border(1.5.dp, ring, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
             Text(
