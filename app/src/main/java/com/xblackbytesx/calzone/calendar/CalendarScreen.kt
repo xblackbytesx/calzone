@@ -176,6 +176,8 @@ data class CalendarUi(
     val writable: List<CalendarChoice> = emptyList(),
     /** The calendars this phone shows, for the legend (decision 33). */
     val legend: List<CalendarChoice> = emptyList(),
+    /** Legend calendars toggled off here: left out of the views, still synced (decision 38). */
+    val dimmed: Set<String> = emptySet(),
     val editor: EditorState? = null,
     /** The scope question is open: for a delete, or for saving the editor. */
     val ask: Ask? = null,
@@ -206,6 +208,9 @@ interface CalendarActions {
     fun loadEarlier()
     fun loadLater()
     fun openSettings()
+
+    /** A legend calendar tapped: hide it from the views, or show it again (decision 38). */
+    fun toggleCalendar(id: String)
     fun setView(view: CalendarView)
 
     /** Today, the date picker: go there, in any view. */
@@ -289,7 +294,7 @@ class CalendarViewModel @Inject constructor(
                 reload()
             }
         }
-        viewModelScope.launch { prefsStore.prefs.map { it.shown to it.hidden }.distinctUntilChanged().collect { reload() } }
+        viewModelScope.launch { prefsStore.prefs.map { Triple(it.shown, it.hidden, it.dimmed) }.distinctUntilChanged().collect { reload() } }
         // A notification, a widget or another app asked for something (decision 34).
         viewModelScope.launch {
             CalendarRequests.requests.filterNotNull().collect { r ->
@@ -351,11 +356,13 @@ class CalendarViewModel @Inject constructor(
                 val collections = core.collections()
                 val calendars = collections.filter { it.info.isCalendar }
                 val hidden = calendars.filter { !prefs.shows(it.info.id, it.info.mine.hidden) }.map { it.info.id }
+                // Toggled off in the legend: out of the views only (decision 38).
+                val dimmed = calendars.map { it.info.id }.filter { it in prefs.dimmed && it !in hidden }
                 val items = core.occurrences(
                     f.atStartOfDay(zone).toEpochSecond(),
                     t.atStartOfDay(zone).toEpochSecond(),
                     zone.id,
-                    hidden,
+                    hidden + dimmed,
                 )
                 // Contacts' conflicts stay in Settings; a gone calendar's show here too.
                 val books = collections.filter { !it.info.isCalendar }.map { it.info.id }.toSet()
@@ -367,7 +374,7 @@ class CalendarViewModel @Inject constructor(
                     .map { CalendarChoice(it.info.id, it.info.label, it.info.shownColor, it.info.mine.defaultAlarm) }
                 // Grouped here, not on the main thread (decision 37).
                 val days = agendaDays(items, f, t, today)
-                Loaded(items, conflicts, calendars.size > hidden.size, writable, legend, days, days.associateBy { it.date })
+                Loaded(items, conflicts, calendars.size > hidden.size, writable, legend, dimmed.toSet(), days, days.associateBy { it.date })
             }.getOrNull()
         } ?: return@withLock
         val (items, conflicts, any, writable, legend) = loaded
@@ -383,6 +390,7 @@ class CalendarViewModel @Inject constructor(
                 hasCalendars = any,
                 writable = writable,
                 legend = legend,
+                dimmed = loaded.dimmed,
             )
         }
     }
@@ -393,9 +401,17 @@ class CalendarViewModel @Inject constructor(
         val any: Boolean,
         val writable: List<CalendarChoice>,
         val legend: List<CalendarChoice>,
+        val dimmed: Set<String>,
         val days: List<AgendaDay>,
         val byDate: DayIndex,
     )
+
+    /** Shown at once in the legend; the views follow when the load finishes. */
+    fun toggleCalendar(id: String) {
+        val dim = id !in _ui.value.dimmed
+        _ui.update { it.copy(dimmed = if (dim) it.dimmed + id else it.dimmed - id) }
+        viewModelScope.launch { prefsStore.setDimmed(id, dim) }
+    }
 
     fun loadEarlier() {
         from = from.minusDays(STEP)
@@ -704,6 +720,7 @@ fun CalendarScreen(onOpenSettings: () -> Unit, vm: CalendarViewModel = hiltViewM
             override fun loadEarlier() = vm.loadEarlier()
             override fun loadLater() = vm.loadLater()
             override fun openSettings() = onOpenSettings()
+            override fun toggleCalendar(id: String) = vm.toggleCalendar(id)
             override fun setView(view: CalendarView) = vm.setView(view)
             override fun goTo(date: LocalDate) = vm.goTo(date)
             override fun show(date: LocalDate) = vm.show(date)
@@ -849,7 +866,7 @@ fun CalendarContent(ui: CalendarUi, actions: CalendarActions) {
                 }
             }
         }
-        if (!ui.loading) Legend(ui.legend)
+        if (!ui.loading) Legend(ui.legend, ui.dimmed, actions::toggleCalendar)
     }
     // Above the legend.
     val above = if (ui.legend.isNotEmpty() && !ui.loading) 44.dp else 0.dp

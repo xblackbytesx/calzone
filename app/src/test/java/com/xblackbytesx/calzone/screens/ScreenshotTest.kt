@@ -107,6 +107,7 @@ private object NoAgenda : CalendarActions {
     override fun loadEarlier() {}
     override fun loadLater() {}
     override fun openSettings() {}
+    override fun toggleCalendar(id: String) {}
     override fun setView(view: CalendarView) {}
     override fun goTo(date: LocalDate) {}
     override fun show(date: LocalDate) {}
@@ -303,6 +304,21 @@ class ScreenshotTest {
 
     @Test
     fun monthDay() = shot("month-day") { CalendarContent(agenda.copy(view = CalendarView.MONTH_DAY), NoAgenda) }
+
+    // Mila's calendar toggled off in the legend (decision 38): grayed out, her events gone.
+    @Test
+    fun monthDayDimmed() = shot("month-day-dimmed") {
+        val family = week.filter { it.collection == "1" }
+        CalendarContent(
+            agenda.copy(
+                view = CalendarView.MONTH_DAY,
+                items = family,
+                byDate = agendaDays(family, from, to, today).associateBy { it.date },
+                dimmed = setOf("2"),
+            ),
+            NoAgenda,
+        )
+    }
 
     // The README shows the default view in each theme.
     @Test

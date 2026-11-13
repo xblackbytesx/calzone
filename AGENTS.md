@@ -96,6 +96,10 @@ and a screenshot table. Its images are a selection of `make screenshots`
 (one new test, `monthDayLight`) scaled to 540 pixels wide in
 `docs/screenshots/`. No widget images: Glance has no screenshot test here.
 
+2026-11-13: the legend toggles calendars in the views (decision 38, the
+owner's request). 71 JVM tests (a screenshot with one calendar toggled
+off), lint clean. **Device-untested**: the tap and the reload on a phone.
+
 ## Build and verify
 
 Docker only (`make`); both repos must be checked out side by side.
@@ -426,8 +430,9 @@ Settled 2026-11-11 (between steps 5 and 6, the owner's request):
     (ringed) and bring it to the top of the list; long press a day for a
     new event. A fresh start without a chosen view opens it. Along the
     bottom of every view, the calendars this phone shows, each name over
-    a bar in its color; it scrolls sideways when there are many. Display
-    only: which calendars show is still chosen in Settings.
+    a bar in its color; it scrolls sideways when there are many. Which
+    calendars this phone has is still chosen in Settings; a tap on the
+    legend hides one from the views (decision 38).
 
 Settled 2026-11-11 (phase 4b step 6):
 
@@ -481,6 +486,17 @@ Settled 2026-11-11 (the owner's feedback: stutter when swiping the month):
     turns the page. A 150 ms crossfade between views and out of
     "Loading", list items fade in and out (150 and 100 ms), the selected
     day's ring fades (120 ms). Nothing waits on an animation.
+
+Settled 2026-11-13 (the owner's request):
+
+38. **A tap on the legend hides a calendar from the views**, as Fossify
+    does. The calendar is grayed out in the legend (its bar gray), and
+    its events leave every view (agenda, day, week, month, month and
+    days). Tap again to show it. The choice is this phone's own (`Prefs.dimmed`)
+    and only for the views: the calendar still syncs, rings its
+    reminders, shows in Android's calendar and the widgets, is found by
+    search and can take new events. This is not "hide everywhere" in
+    Settings, which leaves out the calendar altogether.
 
 ## Invariants
 

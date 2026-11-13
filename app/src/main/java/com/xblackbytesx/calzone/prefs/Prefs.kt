@@ -20,6 +20,12 @@ data class Prefs(
     val shown: Set<String> = emptySet(),
     /** Collections this phone does not show. */
     val hidden: Set<String> = emptySet(),
+    /**
+     * Calendars this phone leaves out of its own calendar views, toggled
+     * from the legend (decision 38). Display only: they still sync, ring
+     * their reminders and show in Android's calendar and the widgets.
+     */
+    val dimmed: Set<String> = emptySet(),
     /** The calendar view chosen last (`AGENDA`, `DAY`, `WEEK` or `MONTH`), opened on a fresh start. */
     val view: String? = null,
     /** The calendar a new event went in last, offered first next time. */
@@ -44,6 +50,7 @@ class PrefsStore(private val context: Context) {
     private val themeKey = stringPreferencesKey("theme")
     private val shownKey = stringSetPreferencesKey("shown")
     private val hiddenKey = stringSetPreferencesKey("hidden")
+    private val dimmedKey = stringSetPreferencesKey("dimmed")
     private val viewKey = stringPreferencesKey("view")
     private val lastCalendarKey = stringPreferencesKey("last_calendar")
     private val askedNotificationsKey = booleanPreferencesKey("asked_notifications")
@@ -53,6 +60,7 @@ class PrefsStore(private val context: Context) {
             theme = p[themeKey]?.let { runCatching { Theme.valueOf(it) }.getOrNull() } ?: Theme.DARK,
             shown = p[shownKey] ?: emptySet(),
             hidden = p[hiddenKey] ?: emptySet(),
+            dimmed = p[dimmedKey] ?: emptySet(),
             view = p[viewKey],
             lastCalendar = p[lastCalendarKey],
             askedNotifications = p[askedNotificationsKey] ?: false,
@@ -82,10 +90,17 @@ class PrefsStore(private val context: Context) {
         }
     }
 
+    suspend fun setDimmed(id: String, dimmed: Boolean) {
+        context.prefsStore.edit {
+            it[dimmedKey] = (it[dimmedKey] ?: emptySet()).let { s -> if (dimmed) s + id else s - id }
+        }
+    }
+
     suspend fun clearChoices() {
         context.prefsStore.edit {
             it.remove(shownKey)
             it.remove(hiddenKey)
+            it.remove(dimmedKey)
         }
     }
 }

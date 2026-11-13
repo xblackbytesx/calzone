@@ -33,6 +33,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -50,6 +51,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
@@ -58,6 +60,7 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -553,16 +556,30 @@ private fun SmallDay(d: LocalDate, month: LocalDate, ui: CalendarUi, dots: List<
 /**
  * Which calendar is which color (decision 33), along the bottom as Fossify
  * has it: the calendars this phone shows, each name over a bar in its color.
+ * A tap hides that calendar from the views, grayed out here, and shows it
+ * again (decision 38).
  */
 @Composable
-internal fun Legend(calendars: List<CalendarChoice>, modifier: Modifier = Modifier) {
+internal fun Legend(
+    calendars: List<CalendarChoice>,
+    dimmed: Set<String>,
+    onToggle: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     if (calendars.isEmpty()) return
     val c = Cz.colors
     BoxWithConstraints(modifier.fillMaxWidth()) {
         val each = maxOf(maxWidth / calendars.size, 96.dp)
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
             calendars.forEach { cal ->
-                Column(Modifier.width(each).padding(top = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                val off = cal.id in dimmed
+                Column(
+                    Modifier.width(each)
+                        .toggleable(value = !off, role = Role.Switch, onValueChange = { onToggle(cal.id) })
+                        .alpha(if (off) 0.35f else 1f)
+                        .padding(top = 6.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
                     Text(
                         cal.label,
                         style = MaterialTheme.typography.labelMedium,
@@ -571,7 +588,7 @@ internal fun Legend(calendars: List<CalendarChoice>, modifier: Modifier = Modifi
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
                     )
-                    Box(Modifier.fillMaxWidth().height(4.dp).background(parseColor(cal.color) ?: c.accent))
+                    Box(Modifier.fillMaxWidth().height(4.dp).background(if (off) c.quiet else parseColor(cal.color) ?: c.accent))
                 }
             }
         }
